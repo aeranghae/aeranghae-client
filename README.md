@@ -1,30 +1,42 @@
-# React + TypeScript + Vite
+ AERANGHAE-CLIENT
+자연어 프롬프트와 기술 스택 선택을 통해 프로젝트 뼈대 코드를 자동 생성하는 플랫폼
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+⚙️ Tech Stack
+Core: React, TypeScript, Vite
 
-Currently, two official plugins are available:
+Desktop: Electron
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Styling: Tailwind CSS v4
 
-## Expanding the ESLint configuration
+Icons: Lucide-React
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+Auth: Google OAuth 2.0 (@react-oauth/google)
 
-- Configure the top-level `parserOptions` property like this:
+API: Axios (Connect to Port 8080)
 
-```js
-export default {
-  // other rules...
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-  },
-}
-```
+📂 Directory Structure
+Plaintext
+aeranghae-client/
+├── electron/
+│   └── main.ts         # Electron 메인 프로세스 (창 크기 1280x850 고정)
+├── src/
+│   ├── assets/         # CSS(index.css) 및 정적 자원
+│   ├── components/
+│   │   └── Sidebar.tsx # 공통 사이드바 내비게이션
+│   ├── pages/
+│   │   ├── Dashboard.tsx      # 프로젝트 대시보드
+│   │   ├── CreateProject.tsx  # AI 프로젝트 생성 인터페이스
+│   │   ├── Library.tsx        # 생성된 프로젝트 목록
+│   │   ├── Login.tsx          # 구글 로그인 및 닉네임 설정
+│   │   ├── Settings.tsx       # 시스템 설정
+│   │   └── ProcessingView.tsx # 코드 생성 대기 화면
+│   └── App.tsx         # 전체 레이아웃 및 배경 애니메이션 제어
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+
+🛠️ Getting Started
+Bash
+# 의존성 설치
+npm install
+
+# 개발 모드 실행
+npm run dev
