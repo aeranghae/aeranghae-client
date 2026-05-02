@@ -110,17 +110,19 @@ import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import CreateProject from './pages/CreateProject';
-//import Library from './pages/Library';
-//import Settings from './pages/Settings';
+import Library from './pages/Library';
+import Settings from './pages/Settings';
 import LoginPage from './pages/Login';
-//import ProcessingView from './pages/ProcessingView';
+import ProcessingView from './pages/ProcessingView';
 import './assets/index.css';
 
 function App() {
   const token = localStorage.getItem('aeranghae_token') || "debug_mode";
   const [activeMenu, setActiveMenu] = useState('dashboard');
   
-  // 배경 효과 설정
+  // 💡 로그인 모달을 제어할 상태 추가
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  
   const [bgConfig, setBgConfig] = useState({
     orb1: 'bg-blue-600/20', orb2: 'bg-purple-600/20',
     pos1: 'top-0 left-0', pos2: 'bottom-0 right-0'
@@ -143,26 +145,31 @@ function App() {
     }
   }, [activeMenu]);
 
-  if (!token) return <LoginPage />;
+  // 토큰이 아예 없는 초기 진입 시에는 전체 화면 로그인
+  if (!token) return <LoginPage onClose={() => {}} />;
 
   return (
-    <div className="flex h-screen w-full bg-[#1C1C1E] text-white overflow-hidden relative font-sans select-none">
-      {/* 배경 레이어 (오브 효과) */}
+    <div className="flex h-screen w-full min-w-[1100px] bg-[#1C1C1E] text-white overflow-hidden relative font-sans select-none">
+      
+      {/* 💡 세팅에서 버튼 클릭 시 뜨는 로그인 모달 */}
+      {showLoginModal && <LoginPage onClose={() => setShowLoginModal(false)} />}
+
+      {/* 배경 레이어 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className={`absolute w-[600px] h-[600px] rounded-full blur-[100px] transition-all duration-[1500ms] ease-in-out ${bgConfig.orb1} ${bgConfig.pos1}`} />
         <div className={`absolute w-[500px] h-[500px] rounded-full blur-[120px] transition-all duration-[1500ms] ease-in-out ${bgConfig.orb2} ${bgConfig.pos2}`} />
       </div>
 
-      {/* 공통 사이드바 */}
       <Sidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} />
 
-      {/* 메인 콘텐츠 영역 */}
       <main className="flex-1 p-8 flex flex-col relative pt-12 h-screen overflow-hidden z-10">
         {activeMenu === 'dashboard' && <Dashboard setActiveMenu={setActiveMenu} />}
         {activeMenu === 'create' && <CreateProject onGenerate={() => setActiveMenu('processing')} />}
-        {/*activeMenu === 'library' && <Library />*/}
-        {/*activeMenu === 'processing' && <ProcessingView onComplete={() => setActiveMenu('dashboard')} />*/}
-        {/*activeMenu === 'settings' && <Settings />*/}
+        {activeMenu === 'library' && <Library />}
+        {activeMenu === 'processing' && <ProcessingView onComplete={() => setActiveMenu('dashboard')} />}
+        
+        {/* 💡 Settings 페이지에 모달을 여는 함수 전달 */}
+        {activeMenu === 'settings' && <Settings onOpenLogin={() => setShowLoginModal(true)} />}
       </main>
     </div>
   );

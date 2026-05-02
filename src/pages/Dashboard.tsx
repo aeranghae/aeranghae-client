@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Code, Clock, BarChart3, ChevronRight, Layout, Cpu, Zap, BookOpenText } from 'lucide-react';
+import { Code, Clock, ChevronRight, Layout, Cpu, BookOpenText } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
 interface DashboardProps {
