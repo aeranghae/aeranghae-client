@@ -106,17 +106,32 @@
 
 // export default App;
 
+import { useState } from 'react';
 import LoginPage from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import './assets/App.css'; // 아까 이동한 경로로 수정
+import './assets/index.css'; // 경로를 src/assets/index.css로 수정
 
 function App() {
-  // 원래 로직: const token = localStorage.getItem('aeranghae_token');
-  const token = "debug_mode"; // 임시로 토큰이 있는 것처럼 설정
+  /** 
+   * [임시 설정] 디자인 확인을 위해 토큰이 있는 것처럼 설정하거나, 
+   * 실제 연동 시에는 localStorage.getItem('aeranghae_token')을 사용
+   */
+  const token = localStorage.getItem('aeranghae_token') || "debug_mode"; 
+
+  /**
+   * Dashboard.tsx에서 요구하는 setActiveMenu 상태
+   * 메뉴 전환 로직이 아직 없다면 빈 함수를 넘겨 에러를 방지
+   */
+  const [activeMenu, setActiveMenu] = useState('dashboard');
 
   return (
     <div className="App">
-      {!token ? <LoginPage /> : <Dashboard />}
+      {!token ? (
+        <LoginPage />
+      ) : (
+        /* Dashboard에 필요한 필수 Props를 전달하여 ts(2741) 에러 해결. */
+        <Dashboard setActiveMenu={setActiveMenu} />
+      )}
     </div>
   );
 }
