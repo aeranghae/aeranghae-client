@@ -106,32 +106,64 @@
 
 // export default App;
 
-import { useState } from 'react';
-import LoginPage from './pages/Login';
+import { useState, useEffect } from 'react';
+import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
-import './assets/index.css'; // 경로를 src/assets/index.css로 수정
+import CreateProject from './pages/CreateProject';
+//import Library from './pages/Library';
+//import Settings from './pages/Settings';
+import LoginPage from './pages/Login';
+//import ProcessingView from './pages/ProcessingView';
+import './assets/index.css';
 
 function App() {
-  /** 
-   * [임시 설정] 디자인 확인을 위해 토큰이 있는 것처럼 설정하거나, 
-   * 실제 연동 시에는 localStorage.getItem('aeranghae_token')을 사용
-   */
-  const token = localStorage.getItem('aeranghae_token') || "debug_mode"; 
-
-  /**
-   * Dashboard.tsx에서 요구하는 setActiveMenu 상태
-   * 메뉴 전환 로직이 아직 없다면 빈 함수를 넘겨 에러를 방지
-   */
+  const token = localStorage.getItem('aeranghae_token') || "debug_mode";
   const [activeMenu, setActiveMenu] = useState('dashboard');
+  
+  // 배경 효과 설정
+  const [bgConfig, setBgConfig] = useState({
+    orb1: 'bg-blue-600/20', orb2: 'bg-purple-600/20',
+    pos1: 'top-0 left-0', pos2: 'bottom-0 right-0'
+  });
+
+  useEffect(() => {
+    switch (activeMenu) {
+      case 'dashboard':
+        setBgConfig({ orb1: 'bg-blue-600/20', orb2: 'bg-purple-600/20', pos1: 'top-[-10%] left-[-10%]', pos2: 'bottom-[-10%] right-[-10%]' });
+        break;
+      case 'create':
+        setBgConfig({ orb1: 'bg-cyan-500/20', orb2: 'bg-indigo-500/20', pos1: 'top-[10%] left-[20%]', pos2: 'bottom-[10%] right-[20%]' });
+        break;
+      case 'library':
+        setBgConfig({ orb1: 'bg-emerald-600/15', orb2: 'bg-teal-600/15', pos1: 'top-[-5%] right-[-5%]', pos2: 'bottom-[-5%] left-[-5%]' });
+        break;
+      case 'processing':
+        setBgConfig({ orb1: 'bg-indigo-900/30', orb2: 'bg-blue-900/30', pos1: 'top-[50%] left-[50%]', pos2: 'bottom-[50%] right-[50%]' });
+        break;
+    }
+  }, [activeMenu]);
+
+  if (!token) return <LoginPage />;
 
   return (
-    <div className="App">
-      {!token ? (
-        <LoginPage />
-      ) : (
-        /* Dashboard에 필요한 필수 Props를 전달하여 ts(2741) 에러 해결. */
-        <Dashboard setActiveMenu={setActiveMenu} />
-      )}
+    <div className="flex h-screen w-full bg-[#1C1C1E] text-white overflow-hidden relative font-sans select-none">
+      {/* 배경 레이어 (오브 효과) */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className={`absolute w-[600px] h-[600px] rounded-full blur-[100px] transition-all duration-[1500ms] ease-in-out ${bgConfig.orb1} ${bgConfig.pos1}`} />
+        <div className={`absolute w-[500px] h-[500px] rounded-full blur-[120px] transition-all duration-[1500ms] ease-in-out ${bgConfig.orb2} ${bgConfig.pos2}`} />
+      </div>
+
+      {/* 공통 사이드바 */}
+      <Sidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} />
+
+      {/* 메인 콘텐츠 영역 */}
+      <main className="flex-1 p-8 flex flex-col relative pt-12 h-screen overflow-hidden z-10">
+        {activeMenu === 'dashboard' && <Dashboard setActiveMenu={setActiveMenu} />}
+        {activeMenu === 'create' && <CreateProject onGenerate={() => setActiveMenu('processing')} />}
+        {/*activeMenu === 'library' && <Library />*/}
+        {/*activeMenu === 'processing' && <ProcessingView onComplete={() => setActiveMenu('dashboard')} />*/}
+        {/*activeMenu === 'settings' && <Settings />*/}
+      </main>
     </div>
   );
 }

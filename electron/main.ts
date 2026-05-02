@@ -28,6 +28,12 @@ let win: BrowserWindow | null
 
 function createWindow() {
   win = new BrowserWindow({
+    // 디자인 수용을 위한 초기 창 크기 설정
+    width: 1280,
+    height: 850,
+    // 최소 크기 제한으로 레이아웃 겹침 방지
+    minWidth: 1100,
+    minHeight: 750,
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
