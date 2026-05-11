@@ -1,111 +1,3 @@
-// import { useState } from 'react';
-// import { GoogleLogin } from '@react-oauth/google';
-// import axios from 'axios';
-
-// function App() {
-//   // 화면 상태 관리를 위한 변수들
-//   const [isLoggedIn, setIsLoggedIn] = useState(false);
-//   const [userName, setUserName] = useState('');
-//   const [nicknameInput, setNicknameInput] = useState('');
-
-//   // 1️⃣ 구글 로그인 성공 시 실행 (토큰 받아서 저장하기)
-//   const handleLoginSuccess = async (credentialResponse: any) => {
-//     const googleToken = credentialResponse.credential;
-    
-//     try {
-//       // 스프링 부트로 구글 토큰 전송
-//       const response = await axios.post('http://localhost:8080/api/auth/google', {
-//         credential: googleToken
-//       });
-
-//       // 스프링이 돌려준 우리만의 JWT 토큰과 정보들
-//       const { accessToken, name } = response.data;
-      
-//       // 🌟 핵심: 발급받은 JWT 토큰을 브라우저의 '로컬 스토리지'에 저장합니다!
-//       localStorage.setItem('aeranghae_token', accessToken);
-      
-//       setUserName(name);
-//       setIsLoggedIn(true); // 로그인 성공 상태로 화면 변경
-//       alert(`${name}님 환영합니다! 이제 닉네임을 설정해 보세요.`);
-      
-//     } catch (error) {
-//       console.error("스프링 서버 통신 에러:", error);
-//       alert("백엔드 서버 통신에 실패했습니다.");
-//     }
-//   };
-
-//   // 2️⃣ 닉네임 설정(회원가입 완료) 버튼 클릭 시 실행 (헤더에 토큰 싣기)
-//   const handleSignupSubmit = async () => {
-//     // 지갑(로컬 스토리지)에서 토큰을 꺼내옵니다.
-//     const token = localStorage.getItem('aeranghae_token');
-
-//     if (!token) {
-//       alert("로그인 정보가 없습니다. 다시 로그인해 주세요.");
-//       return;
-//     }
-
-//     try {
-//       // 🌟 핵심: API 요청 시 헤더(headers)에 토큰을 'Bearer ' 방식에 맞춰 실어 보냅니다!
-//       const response = await axios.post(
-//         'http://localhost:8080/api/user/signup',
-//         { nickname: nicknameInput }, // 보낼 데이터 (@RequestBody 부분)
-//         {
-//           headers: {
-//             Authorization: `Bearer ${token}` // 문지기에게 보여줄 통행증!
-//           }
-//         }
-//       );
-
-//       if (response.data === 'success') {
-//         alert("닉네임 설정이 완료되었습니다!");
-//       } else {
-//         alert("닉네임 설정에 실패했습니다.");
-//       }
-//     } catch (error) {
-//       console.error("회원가입 API 에러:", error);
-//       alert("권한이 없거나 서버에 문제가 발생했습니다.");
-//     }
-//   };
-
-//   return (
-//     <div style={{ padding: '50px', textAlign: 'center', fontFamily: 'sans-serif' }}>
-//       <h1>애랑해 (AI-ranghae)</h1>
-      
-//       {/* 로그인하지 않은 상태일 때 보여줄 화면 */}
-//       {!isLoggedIn ? (
-//         <>
-//           <p>서비스를 시작하려면 로그인해주세요.</p>
-//           <div style={{ display: 'flex', justifyContent: 'center', marginTop: '30px' }}>
-//             <GoogleLogin onSuccess={handleLoginSuccess} onError={() => alert("구글 로그인 실패")} />
-//           </div>
-//         </>
-//       ) : (
-//         /* 로그인 성공 후 보여줄 화면 (닉네임 설정) */
-//         <div style={{ marginTop: '30px', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
-//           <h2>🎉 {userName}님, 로그인을 환영합니다!</h2>
-//           <p>서비스에서 사용할 닉네임을 입력해 주세요.</p>
-          
-//           <input 
-//             type="text" 
-//             placeholder="새 닉네임 입력" 
-//             value={nicknameInput}
-//             onChange={(e) => setNicknameInput(e.target.value)}
-//             style={{ padding: '10px', fontSize: '16px', marginRight: '10px' }}
-//           />
-//           <button 
-//             onClick={handleSignupSubmit}
-//             style={{ padding: '10px 20px', fontSize: '16px', cursor: 'pointer' }}
-//           >
-//             닉네임 설정하기
-//           </button>
-//         </div>
-//       )}
-//     </div>
-//   )
-// }
-
-// export default App;
-
 import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -117,16 +9,23 @@ import ProcessingView from './pages/ProcessingView';
 import './assets/index.css';
 
 function App() {
-  const token = localStorage.getItem('aeranghae_token') || "debug_mode";
   const [activeMenu, setActiveMenu] = useState('dashboard');
-  
-  // 💡 로그인 모달을 제어할 상태 추가
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isGuest, setIsGuest] = useState(false); 
+  const [isLoading, setIsLoading] = useState(true);
+
   const [bgConfig, setBgConfig] = useState({
     orb1: 'bg-blue-600/20', orb2: 'bg-purple-600/20',
     pos1: 'top-0 left-0', pos2: 'bottom-0 right-0'
   });
+
+  useEffect(() => {
+    const token = localStorage.getItem('aeranghae_token');
+    if (token) {
+      setIsLoggedIn(true);
+    }
+    setIsLoading(false);
+  }, []);
 
   useEffect(() => {
     switch (activeMenu) {
@@ -145,32 +44,46 @@ function App() {
     }
   }, [activeMenu]);
 
-  // 토큰이 아예 없는 초기 진입 시에는 전체 화면 로그인
-  if (!token) return <LoginPage onClose={() => {}} />;
+  //로그인/게스트 입장 완료 핸들러
+  const handleEntryComplete = () => {
+    const token = localStorage.getItem('aeranghae_token');
+    if (token) {
+      setIsLoggedIn(true);
+      setIsGuest(false); // 로그인 성공 시 게스트 모드 해제
+    } else {
+      setIsGuest(true);
+    }
+  };
+
+  if (isLoading) return <div className="h-screen w-full bg-[#1C1C1E]" />;
 
   return (
     <div className="flex h-screen w-full min-w-[1100px] bg-[#1C1C1E] text-white overflow-hidden relative font-sans select-none">
       
-      {/* 💡 세팅에서 버튼 클릭 시 뜨는 로그인 모달 */}
-      {showLoginModal && <LoginPage onClose={() => setShowLoginModal(false)} />}
-
       {/* 배경 레이어 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className={`absolute w-[600px] h-[600px] rounded-full blur-[100px] transition-all duration-[1500ms] ease-in-out ${bgConfig.orb1} ${bgConfig.pos1}`} />
         <div className={`absolute w-[500px] h-[500px] rounded-full blur-[120px] transition-all duration-[1500ms] ease-in-out ${bgConfig.orb2} ${bgConfig.pos2}`} />
       </div>
 
-      <Sidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} />
-
-      <main className="flex-1 p-8 flex flex-col relative pt-12 h-screen overflow-hidden z-10">
-        {activeMenu === 'dashboard' && <Dashboard setActiveMenu={setActiveMenu} />}
-        {activeMenu === 'create' && <CreateProject onGenerate={() => setActiveMenu('processing')} />}
-        {activeMenu === 'library' && <Library />}
-        {activeMenu === 'processing' && <ProcessingView onComplete={() => setActiveMenu('dashboard')} />}
-        
-        {/* 💡 Settings 페이지에 모달을 여는 함수 전달 */}
-        {activeMenu === 'settings' && <Settings onOpenLogin={() => setShowLoginModal(true)} />}
-      </main>
+      {/* 인증 전(로그인X & 게스트X)일 때만 로그인 창 노출 */}
+      {!isLoggedIn && !isGuest ? (
+        <div className="relative z-50 w-full h-full flex items-center justify-center animate-in fade-in duration-700">
+          <LoginPage onClose={handleEntryComplete} />
+        </div>
+      ) : (
+        /*인증 후 레이아웃 */
+        <>
+          <Sidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} />
+          <main className="flex-1 p-8 flex flex-col relative pt-12 h-screen overflow-hidden z-10 animate-in slide-in-from-left-4 duration-1000">
+            {activeMenu === 'dashboard' && <Dashboard setActiveMenu={setActiveMenu} />}
+            {activeMenu === 'create' && <CreateProject onGenerate={() => setActiveMenu('processing')} />}
+            {activeMenu === 'library' && <Library />}
+            {activeMenu === 'processing' && <ProcessingView onComplete={() => setActiveMenu('dashboard')} />}
+            {activeMenu === 'settings' && <Settings />}
+          </main>
+        </>
+      )}
     </div>
   );
 }
