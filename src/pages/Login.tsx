@@ -27,21 +27,26 @@ const Login: React.FC<LoginProps> = ({ onClose }) => {
       const response = await axios.post(`${API_BASE_URL}/api/auth/google`, {
         credential: credentialResponse.credential
       });
-      const { accessToken, nickname, isNewUser } = response.data;
-      
+
+      // role 필드 확인
+      const { accessToken, name, role, nickname } = response.data;
       localStorage.setItem('aeranghae_token', accessToken);
 
-      // 백엔드 대응: 이미 닉네임이 있는 유저라면 바로 입장
-      if (nickname || isNewUser === false) {
-        localStorage.setItem('aeranghae_user_name', nickname);
-        setUserData({ nickname: nickname });
+      // 1. USER: 이미 닉네임 설정이 완료된 일반 사용자
+      if (role === 'USER') {
+        const finalName = nickname || name;
+        localStorage.setItem('aeranghae_user_name', finalName);
+        setUserData({ nickname: finalName });
         setStep('already_logged_in');
         return;
       }
 
-      // 신규 유저라면 닉네임 설정 단계로
-      setStep('signup'); 
+      // 2. GUEST: 닉네임 설정이 필요한 신규 가입자
+      if (role === 'GUEST') {
+        setStep('signup');
+      }
     } catch (error) {
+      console.error("로그인 에러:", error);
       alert("인증에 실패했습니다.");
     }
   };
@@ -81,11 +86,11 @@ const Login: React.FC<LoginProps> = ({ onClose }) => {
 
       <div className="flex-1 bg-[#1C1C1E] p-12 flex flex-col justify-center items-center">
         {step === 'already_logged_in' ? (
-          <div className="w-full max-w-[280px] text-center animate-in zoom-in-95 duration-500">
+          <div className="w-full max-w-[280px] text-center">
             <div className="w-20 h-20 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-blue-500/30">
               <ShieldCheck size={40} className="text-blue-400" />
             </div>
-            <h2 className="text-2xl font-bold mb-2 text-white font-sans tracking-tight">Welcome Back!</h2>
+            <h2 className="text-2xl font-bold mb-2">Welcome Back!</h2>
             <p className="text-gray-400 text-sm mb-8 leading-relaxed">현재 <span className="text-white font-bold">{userData.nickname}</span>님으로<br/>로그인되어 있습니다.</p>
             <button onClick={onClose} className="w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl font-bold text-white transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95">
               대시보드로 입장하기 <ArrowRight size={18} />
@@ -104,7 +109,7 @@ const Login: React.FC<LoginProps> = ({ onClose }) => {
           </div>
         ) : (
           <div className="w-full max-w-[280px] text-center animate-in slide-in-from-right-4 duration-500">
-            <h2 className="text-2xl font-bold mb-2 tracking-tight">Almost Done!</h2>
+            <h2 className="text-2xl font-bold mb-2 tracking-tight font-sans text-white">Almost Done!</h2>
             <p className="text-gray-400 text-sm mb-8">
               AERANGHAE에서 사용할 <br/> 
               <span className="text-blue-400 font-bold">닉네임을 설정해주세요.</span>
