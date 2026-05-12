@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import CreateProject from './pages/CreateProject';
@@ -20,11 +21,27 @@ function App() {
   });
 
   useEffect(() => {
-    const token = localStorage.getItem('aeranghae_token');
-    if (token) {
-      setIsLoggedIn(true);
-    }
-    setIsLoading(false);
+    const checkLoginStatus = async () => {
+      const token = localStorage.getItem('aeranghae_token');
+      if (token) {
+        try {
+          const res = await axios.get('https://oxxultus.cloud/api/user/me', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const finalName = res.data.name || res.data.nickname;
+          if (finalName) {
+            localStorage.setItem('aeranghae_user_name', finalName);
+            setIsLoggedIn(true);
+          }
+        } catch (err) {
+          localStorage.removeItem('aeranghae_token');
+          localStorage.removeItem('aeranghae_user_name');
+          setIsLoggedIn(false);
+        }
+      }
+      setIsLoading(false);
+    };
+    checkLoginStatus();
   }, []);
 
   useEffect(() => {
@@ -44,12 +61,11 @@ function App() {
     }
   }, [activeMenu]);
 
-  //로그인/게스트 입장 완료 핸들러
   const handleEntryComplete = () => {
     const token = localStorage.getItem('aeranghae_token');
     if (token) {
       setIsLoggedIn(true);
-      setIsGuest(false); // 로그인 성공 시 게스트 모드 해제
+      setIsGuest(false);
     } else {
       setIsGuest(true);
     }
@@ -59,20 +75,16 @@ function App() {
 
   return (
     <div className="flex h-screen w-full min-w-[1100px] bg-[#1C1C1E] text-white overflow-hidden relative font-sans select-none">
-      
-      {/* 배경 레이어 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className={`absolute w-[600px] h-[600px] rounded-full blur-[100px] transition-all duration-[1500ms] ease-in-out ${bgConfig.orb1} ${bgConfig.pos1}`} />
         <div className={`absolute w-[500px] h-[500px] rounded-full blur-[120px] transition-all duration-[1500ms] ease-in-out ${bgConfig.orb2} ${bgConfig.pos2}`} />
       </div>
 
-      {/* 인증 전(로그인X & 게스트X)일 때만 로그인 창 노출 */}
       {!isLoggedIn && !isGuest ? (
         <div className="relative z-50 w-full h-full flex items-center justify-center animate-in fade-in duration-700">
           <LoginPage onClose={handleEntryComplete} />
         </div>
       ) : (
-        /*인증 후 레이아웃 */
         <>
           <Sidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} />
           <main className="flex-1 p-8 flex flex-col relative pt-12 h-screen overflow-hidden z-10 animate-in slide-in-from-left-4 duration-1000">

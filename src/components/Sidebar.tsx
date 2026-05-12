@@ -8,27 +8,23 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ activeMenu, setActiveMenu }) => {
   const token = localStorage.getItem('aeranghae_token');
-  const userName = localStorage.getItem('aeranghae_user_name') || 'Guest';
+  const userName = localStorage.getItem('aeranghae_user_name') || 'User';
 
   const handleLogout = () => {
     if (window.confirm("로그아웃 하시겠습니까?")) {
-      localStorage.removeItem('aeranghae_token');
-      localStorage.removeItem('aeranghae_user_name');
-      window.location.reload(); 
+      localStorage.clear();
+      window.location.href = "/";
     }
   };
 
   const handleGoToLogin = () => {
-    localStorage.removeItem('aeranghae_token');
-    localStorage.removeItem('aeranghae_user_name');
+    localStorage.clear();
     window.location.reload();
   };
 
   return (
     <aside className="w-64 h-full relative flex flex-col border-r border-white/10 bg-black/20 backdrop-blur-xl pt-8 z-20 shrink-0 select-none font-sans">
-      <div className="px-6 pb-6 text-2xl font-black bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent italic tracking-tighter uppercase">
-        AERANGHAE
-      </div>
+      <div className="px-6 pb-6 text-2xl font-black bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent italic tracking-tighter uppercase">AERANGHAE</div>
 
       <nav className="flex-1 px-4 space-y-2">
         <SidebarItem icon={<Home size={20} />} text="Dashboard" active={activeMenu === 'dashboard'} onClick={() => setActiveMenu('dashboard')} />
@@ -47,9 +43,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activeMenu, setActiveMenu }) => {
             <p className="text-[9px] text-blue-400 font-bold tracking-tighter uppercase opacity-80">{token ? 'Online' : 'Limited Access'}</p>
           </div>
           {token ? (
-            <button onClick={handleLogout} className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all active:scale-90" title="Logout"><LogOut size={16} /></button>
+            <button onClick={handleLogout} className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all active:scale-90">
+              <LogOut size={16} />
+            </button>
           ) : (
-            <button onClick={handleGoToLogin} className="p-1.5 text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all active:scale-90 flex flex-col items-center gap-0.5" title="Login"><LogIn size={16} /><span className="text-[8px] font-bold">Login</span></button>
+            <button onClick={handleGoToLogin} className="p-1.5 text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all active:scale-90 flex flex-col items-center">
+              <LogIn size={16} /><span className="text-[8px] font-bold">Login</span>
+            </button>
           )}
         </div>
       </div>
@@ -59,7 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeMenu, setActiveMenu }) => {
 
 const SidebarItem = ({ icon, text, active, onClick }: any) => (
   <div onClick={onClick} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
-    {icon} <span className="font-bold text-sm font-sans">{text}</span>
+    {icon} <span className="font-bold text-sm">{text}</span>
   </div>
 );
 

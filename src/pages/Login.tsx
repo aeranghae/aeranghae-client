@@ -28,11 +28,9 @@ const Login: React.FC<LoginProps> = ({ onClose }) => {
         credential: credentialResponse.credential
       });
 
-      // role 필드 확인
       const { accessToken, name, role, nickname } = response.data;
       localStorage.setItem('aeranghae_token', accessToken);
 
-      // 1. USER: 이미 닉네임 설정이 완료된 일반 사용자
       if (role === 'USER') {
         const finalName = nickname || name;
         localStorage.setItem('aeranghae_user_name', finalName);
@@ -41,7 +39,6 @@ const Login: React.FC<LoginProps> = ({ onClose }) => {
         return;
       }
 
-      // 2. GUEST: 닉네임 설정이 필요한 신규 가입자
       if (role === 'GUEST') {
         setStep('signup');
       }
@@ -58,13 +55,23 @@ const Login: React.FC<LoginProps> = ({ onClose }) => {
       return;
     }
     try {
+      // 1. 닉네임 설정 요청 (DB 업데이트)
       await axios.post(`${API_BASE_URL}/api/user/signup`, 
         { nickname: userData.nickname },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      localStorage.setItem('aeranghae_user_name', userData.nickname);
+
+      // 2.가입 성공 후 서버에서 최신 정보(Role.USER가 된 상태)를 다시 가져옴
+      const userRes = await axios.get(`${API_BASE_URL}/api/user/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      // 3. 로컬 스토리지에 최신 닉네임 저장 및 종료
+      localStorage.setItem('aeranghae_user_name', userRes.data.nickname);
+      alert("가입이 완료되었습니다!");
       onClose(); 
     } catch (error) {
+      console.error("가입 에러:", error);
       alert("닉네임 설정 중 오류 발생");
     }
   };
@@ -109,8 +116,8 @@ const Login: React.FC<LoginProps> = ({ onClose }) => {
           </div>
         ) : (
           <div className="w-full max-w-[280px] text-center animate-in slide-in-from-right-4 duration-500">
-            <h2 className="text-2xl font-bold mb-2 tracking-tight font-sans text-white">Almost Done!</h2>
-            <p className="text-gray-400 text-sm mb-8">
+            <h2 className="text-2xl font-bold mb-2 tracking-tight">Almost Done!</h2>
+            <p className="text-gray-400 text-sm mb-8 font-sans">
               AERANGHAE에서 사용할 <br/> 
               <span className="text-blue-400 font-bold">닉네임을 설정해주세요.</span>
             </p>
@@ -122,7 +129,7 @@ const Login: React.FC<LoginProps> = ({ onClose }) => {
                 placeholder="닉네임 입력" 
                 className="w-full bg-black/30 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-blue-500/50 transition-all" 
               />
-              <button onClick={handleSignupSubmit} className="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-bold text-white transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 active:scale-[0.98]">
+              <button onClick={handleSignupSubmit} className="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-bold text-white transition-all flex items-center justify-center gap-2 active:scale-[0.98]">
                 <CheckCircle size={18} /> 설정 완료하기
               </button>
             </div>
