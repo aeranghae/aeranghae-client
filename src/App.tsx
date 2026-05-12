@@ -21,6 +21,8 @@ function App() {
   });
 
   useEffect(() => {
+    document.title = " ";
+
     const checkLoginStatus = async () => {
       const token = localStorage.getItem('aeranghae_token');
       if (token) {
