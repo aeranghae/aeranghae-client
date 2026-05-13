@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 
 interface CreateProjectProps {
-  onGenerate: () => void;
+  onGenerate: (data: any) => void;
 }
 
 // llm 도메인 모델에 맞춘 상세 분석 결과 타입
@@ -376,7 +376,7 @@ const CreateProject: React.FC<CreateProjectProps> = ({ onGenerate }) => {
               <>
                 <button onClick={() => setStep(1)} className="px-10 py-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl font-bold transition-all text-gray-400">RESTART</button>
                 <button 
-                  onClick={onGenerate}
+                  onClick={() => onGenerate(formData)}
                   className="px-16 py-4 bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 rounded-2xl font-black tracking-widest shadow-2xl shadow-purple-600/30 hover:scale-[1.02] active:scale-95 transition-all text-white"
                 >
                   GENERATE PROJECT
