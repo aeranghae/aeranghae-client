@@ -4,7 +4,7 @@ import {
   Info, FileText, ShieldCheck, RefreshCw, AlertCircle, History,
   Terminal, BookOpen, Layers, Cpu, Layout
 } from 'lucide-react';
-
+import { projectService, ProjectCreateRequestDto } from '../services/projectService';
 interface CreateProjectProps {
   onGenerate: (data: any) => void;
 }
@@ -26,6 +26,7 @@ interface AnalysisVersion {
 const CreateProject: React.FC<CreateProjectProps> = ({ onGenerate }) => {
   const [step, setStep] = useState(1);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [showStackGuide, setShowStackGuide] = useState(false);
   const [selectedGuideStack, setSelectedGuideStack] = useState('React');
 
@@ -37,6 +38,35 @@ const CreateProject: React.FC<CreateProjectProps> = ({ onGenerate }) => {
     finalAnalysis: null as AnalysisVersion | null,
     license: 'MIT',
   });
+
+  //백엔드 POST 요청 핸들러
+  const handleGenerateProject = async () => {
+    if (!formData.finalAnalysis) return alert("요구사항 분석을 먼저 완료해주세요!");
+
+    setIsGenerating(true);
+
+    //DTO 규격 매핑
+    const requestDto: ProjectCreateRequestDto = {
+      projectName: formData.projectName || "New_Project",
+      framework: formData.finalAnalysis.recommended_stack[0]?.name || "React",
+      language: formData.finalAnalysis.programming_language.value,
+      license: formData.license,
+      model: "gemini-1.5-pro", // 협의된 모델명
+      prompt: formData.prompt
+    };
+
+    try {
+      // 서버로 전송
+      const result = await projectService.generateProject(requestDto);
+      onGenerate(result); 
+      alert("프로젝트 생성이 성공적으로 요청되었습니다!");
+    } catch (error) {
+      console.error("전송 에러:", error);
+      alert("서버 통신 중 오류가 발생했습니다. 주소나 네트워크 설정을 확인해주세요.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const stackGuides: { [key: string]: string } = {
     'React': '가장 대중적인 UI 라이브러리입니다. 풍부한 생태계와 컴포넌트 재사용성이 강점입니다.',
@@ -406,10 +436,11 @@ const CreateProject: React.FC<CreateProjectProps> = ({ onGenerate }) => {
               <>
                 <button onClick={() => setStep(1)} className="px-10 py-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl font-bold transition-all text-gray-400">RESTART</button>
                 <button 
-                  onClick={() => onGenerate(formData)}
-                  className="px-16 py-4 bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 rounded-2xl font-black tracking-widest shadow-2xl shadow-purple-600/30 hover:scale-[1.02] active:scale-95 transition-all text-white"
+                  onClick={handleGenerateProject} 
+                  disabled={isGenerating}
+                  className="px-16 py-4 bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 rounded-2xl font-black text-[14px] tracking-widest text-white shadow-2xl shadow-purple-600/30 uppercase flex items-center gap-2 active:scale-95 transition-all"
                 >
-                  GENERATE PROJECT
+                  {isGenerating ? <RefreshCw className="animate-spin" size={14} /> : "Generate Project"}
                 </button>
               </>
             )}
