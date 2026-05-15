@@ -47,9 +47,9 @@ const CreateProject: React.FC<CreateProjectProps> = ({ onGenerate }) => {
 
     //DTO 규격 매핑
     const requestDto: ProjectCreateRequestDto = {
-      projectName: formData.projectName || "New_Project",
-      framework: formData.finalAnalysis.recommended_stack[0]?.name || "React",
-      language: formData.finalAnalysis.programming_language.value,
+      projectName: formData.projectName || "SpringBoot_Test",
+      framework: "Spring Boot", 
+      language: "Java",
       license: formData.license,
       model: "gemini-1.5-pro", // 협의된 모델명
       prompt: formData.prompt
