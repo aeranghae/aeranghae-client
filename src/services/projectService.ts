@@ -20,6 +20,16 @@ const API = axios.create({
   },
 });
 
+//요청 보내기 직전에 토큰을 헤더에 삽입
+API.interceptors.request.use((config) => {
+  const token = localStorage.getItem('aeranghae_token'); 
+  
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export const projectService = {
   /*프로젝트 생성 요청*/
   generateProject: async (data: ProjectCreateRequestDto) => {
