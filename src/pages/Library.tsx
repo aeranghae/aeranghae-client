@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Folder, MoreVertical, Calendar, Download, RefreshCw, CheckCircle2, Trash2 } from 'lucide-react';
+import { Search, Folder, MoreVertical, Calendar, Download, RefreshCw, CheckCircle2, Trash2, Edit2 } from 'lucide-react';
 
 // Props 인터페이스 정의
 interface LibraryProps {
@@ -13,12 +13,32 @@ const Library: React.FC<LibraryProps> = ({ projects, setActiveMenu }) => {
   // 현재 삭제 확인 모달을 띄울 프로젝트 상태
   const [projectToDelete, setProjectToDelete] = useState<any | null>(null);
   
+  //이름 변경(수정 모드)을 위한 상태 변수들
+  const [editingProjectId, setEditingProjectId] = useState<any | null>(null); // 현재 어떤 프로젝트를 수정 중인지 ID 보관
+  const [editTitleInput, setEditTitleInput] = useState<string>(''); // 입력 중인 새 이름 텍스트
+
   const handleProjectClick = (item: any) => {
+    //수정 모드일 때 메뉴 카드를 클릭해도 상세 페이지로 넘어가지 않게 방어
+    if(editingProjectId === item.id) return;
+
     if (item.status === 'processing') {
       setActiveMenu('processing');
     } else {
       setActiveMenu('detail');
     }
+  };
+
+  //이름 변경 메뉴를 클릭했을 때 수정 모드로 진입시키는 핸들러
+  const handleStartEditUI = (item: any) => {
+    setEditingProjectId(item.id);
+    setEditTitleInput(item.title); // 기존 이름을 인풋창에 미리 채워둠
+    setActiveMenuId(null); // 더보기 드롭다운은 닫기
+  };
+
+  //인풋창에서 Enter를 누르거나 저장 버튼을 눌렀을 때의 임시 핸들러 (API는 나중에)
+  const handleSaveTitleUI = () => {
+    setEditingProjectId(null);
+    alert(`UI 테스트: "${editTitleInput}"(으)로 이름 변경 요청 준비 완료!`);
   };
 
   //최종 삭제 확인 시 모달을 닫아주는 임시 핸들러 (API는 나중에 연결)
@@ -78,14 +98,23 @@ const Library: React.FC<LibraryProps> = ({ projects, setActiveMenu }) => {
                         {/* 바깥 클릭 시 메뉴가 닫히게 하는 투명 레이어 */}
                         <div className="fixed inset-0 z-40 cursor-default" onClick={(e) => { e.stopPropagation(); setActiveMenuId(null); }} />
                         <div className="absolute right-0 mt-2 w-36 bg-[#242426] border border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                         <button 
+                            onClick={(e) => {
+                              e.stopPropagation(); 
+                              handleStartEditUI(item);
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-gray-300 hover:bg-white/5 rounded-xl transition-all mb-0.5"
+                          >
+                            <Edit2 size={13} /> 이름 변경
+                          </button>
                           <button 
                             onClick={(e) => {
-                              e.stopPropagation(); //카드 디테일 이동 차단
+                              e.stopPropagation(); 
                               setProjectToDelete(item);
                             }}
-                            className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
                           >
-                            <Trash2 size={14} /> 프로젝트 삭제
+                            <Trash2 size={13} /> 프로젝트 삭제
                           </button>
                         </div>
                       </>
@@ -93,8 +122,35 @@ const Library: React.FC<LibraryProps> = ({ projects, setActiveMenu }) => {
                   </div>
                 </div>
                 
+                {/*이름 렌더링 구역: 일반 모드 vs 수정 모드 분기 처리 */}
+                {editingProjectId === item.id ? (
+                  <div className="flex gap-2 mb-1" onClick={(e) => e.stopPropagation()}>
+                    <input 
+                      type="text"
+                      value={editTitleInput}
+                      onChange={(e) => setEditTitleInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSaveTitleUI()}
+                      autoFocus
+                      className="flex-1 min-w-0 bg-black/30 border border-blue-500 rounded-xl px-3 py-1.5 text-base text-white focus:outline-none font-bold"
+                    />
+                    <button 
+                      onClick={handleSaveTitleUI}
+                      className="bg-blue-600 hover:bg-blue-500 text-xs font-bold px-3 py-1.5 rounded-xl transition-all shrink-0"
+                    >
+                      저장
+                    </button>
+                    <button 
+                      onClick={() => setEditingProjectId(null)}
+                      className="bg-white/5 hover:bg-white/10 border border-white/5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all text-gray-400 shrink-0"
+                    >
+                      취소
+                    </button>
+                  </div>
+                ) : (
+
                 <h3 className="font-bold text-xl mb-1 truncate">{item.title}</h3>
-                
+                )}
+
                 {item.status === 'processing' ? (
                   <div className="mt-4 space-y-2">
                     <div className="flex justify-between text-[10px] font-black text-blue-400 uppercase tracking-widest">
