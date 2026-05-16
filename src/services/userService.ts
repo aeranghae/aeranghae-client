@@ -22,5 +22,16 @@ export const userService = {
       console.error("닉네임 변경 API 에러:", error);
       throw error;
     }
+  },
+
+  //내 정보 조회(GET)
+  getUserInfo: async () => {
+    try {
+      const response = await API.get('/api/user/me');
+      return response.data;
+    } catch (error) {
+      console.error("내 정보 조회 API 에러:", error);
+      throw error;
+    }
   }
 };

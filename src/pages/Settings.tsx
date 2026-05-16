@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Cpu, Layout, HardDrive, Save, CheckCircle2, Sparkles, BrainCircuit, BotMessageSquare, Bell, Trash2 } from 'lucide-react';
 import { userService } from '../services/userService';
 
@@ -82,25 +81,39 @@ const Settings: React.FC = () => {
 
     setIsSaving(true);
     try {
+      // 1️. 닉네임 변경 요청
       await userService.updateNickname(userName);
 
-      // 내 정보 조회를 통해 최신 정보 동기화 (이 구역은 다음 단계에서 분리할 예정이므로 유지)
-      const res = await axios.get('https://oxxultus.cloud/api/user/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // 2️. 내 정보 조회 API 요청
+      const resData = await userService.getUserInfo();
+      
+      // [디버깅] 백엔드가 실제로 준 데이터가 뭔지 
+      console.log("백엔드가 돌려준 /api/user/me 원본 데이터:", resData);
 
-      const updatedName = res.data.name || res.data.nickname;
+      const updatedName = resData?.name || resData?.nickname || resData?.data?.name || resData?.data?.nickname;
+      
       if (updatedName) {
         localStorage.setItem('aeranghae_user_name', updatedName);
-        setUserName(updatedName);
-
+        setUserName(updatedName); // 현재 설정 페이지 UI 즉시 동기화
+        
+        // 브라우저 전체에 신호를 쏘아 사이드바 닉네임까지 실시간 변경
         window.dispatchEvent(new Event('user-name-changed'));
-
+        
         alert("설정이 저장되었습니다.");
+      } else {
+        // 서버에서 성공은 했는데 원하는 필드명(name/nickname)이 없을 때를 위한 방어막
+        console.warn("백엔드 응답 데이터 구조에 name이나 nickname 필드가 없습니다.");
+        alert("서버에 저장은 되었으나, 최신 닉네임 정보를 불러오지 못했습니다. 새로고침을 시도해 주세요.");
       }
     } catch (error: any) {
-      console.error("설정 저장 중 에러 발생:", error.response?.data);
-      alert("변경에 실패했습니다. (CORS 또는 서버 오류 확인 필요)");
+      console.error("설정 저장 중 진짜 에러 발생:", error);
+      if (error.response) {
+        console.error("서버가 응답한 에러 데이터:", error.response.data);
+        alert(`변경에 실패했습니다: ${error.response.data?.message || '서버 오류'}`);
+      } else {
+        console.error("코드 실행 중 예기치 못한 에러:", error.message);
+        alert(`오류 발생: ${error.message}`);
+      }
     } finally {
       setIsSaving(false);
     }
