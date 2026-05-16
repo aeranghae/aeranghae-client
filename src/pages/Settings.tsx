@@ -82,11 +82,9 @@ const Settings: React.FC = () => {
 
     setIsSaving(true);
     try {
-      await axios.patch('https://oxxultus.cloud/api/user/nickname', 
-        { nickname: userName }, 
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await userService.updateNickname(userName);
 
+      // 내 정보 조회를 통해 최신 정보 동기화 (이 구역은 다음 단계에서 분리할 예정이므로 유지)
       const res = await axios.get('https://oxxultus.cloud/api/user/me', {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -94,11 +92,14 @@ const Settings: React.FC = () => {
       const updatedName = res.data.name || res.data.nickname;
       if (updatedName) {
         localStorage.setItem('aeranghae_user_name', updatedName);
-        alert("설정이 정식으로 저장되었습니다!");
-        window.location.href = "/";
+        setUserName(updatedName);
+
+        window.dispatchEvent(new Event('user-name-changed'));
+
+        alert("설정이 저장되었습니다.");
       }
     } catch (error: any) {
-      console.error("PATCH 요청 에러:", error.response?.data);
+      console.error("설정 저장 중 에러 발생:", error.response?.data);
       alert("변경에 실패했습니다. (CORS 또는 서버 오류 확인 필요)");
     } finally {
       setIsSaving(false);

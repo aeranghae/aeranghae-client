@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react'; // 🔗 useState, useEffect 임포트
 import { Home, PlusCircle, Folder, Settings as SettingsIcon, LogOut, LogIn, User } from 'lucide-react';
 
 interface SidebarProps {
@@ -8,7 +8,25 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ activeMenu, setActiveMenu }) => {
   const token = localStorage.getItem('aeranghae_token');
-  const userName = localStorage.getItem('aeranghae_user_name') || 'User';
+  
+  const [currentUserName, setCurrentUserName] = useState<string>(
+    localStorage.getItem('aeranghae_user_name') || 'User'
+  );
+
+  useEffect(() => {
+    const handleNameChange = () => {
+      // 이벤트가 터지면 localStorage에서 최신 닉네임을 꺼내 상태 교체
+      setCurrentUserName(localStorage.getItem('aeranghae_user_name') || 'User');
+    };
+
+    // 브라우저 창(window)에 'user-name-changed' 이벤트 리스너를 등록
+    window.addEventListener('user-name-changed', handleNameChange);
+
+    // 컴포넌트가 언마운트될 때 리스너 청소(메모리 누수 방지
+    return () => {
+      window.removeEventListener('user-name-changed', handleNameChange);
+    };
+  }, []);
 
   const handleLogout = () => {
     if (window.confirm("로그아웃 하시겠습니까?")) {
@@ -39,7 +57,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeMenu, setActiveMenu }) => {
             <User size={18} />
           </div>
           <div className="flex-1 overflow-hidden">
-            <p className="text-xs font-bold truncate text-white">{token ? `${userName}님` : 'Guest Mode'}</p>
+            <p className="text-xs font-bold truncate text-white">{token ? `${currentUserName}님` : 'Guest Mode'}</p>
             <p className="text-[9px] text-blue-400 font-bold tracking-tighter uppercase opacity-80">{token ? 'Online' : 'Limited Access'}</p>
           </div>
           {token ? (
