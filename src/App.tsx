@@ -132,7 +132,7 @@ function App() {
             {activeMenu === 'create' && <CreateProject onGenerate={handleGenerate} />}
             
             {/* 라이브러리에 프로젝트 리스트와 메뉴 변경 함수 전달 */}
-            {activeMenu === 'library' && <Library projects={projects} setActiveMenu={setActiveMenu} />}
+            {activeMenu === 'library' && <Library setActiveMenu={setActiveMenu} />}
             
             {/* 라이브러리에서 클릭 시 진입하는 프로세싱 뷰 */}
             {activeMenu === 'processing' && <ProcessingView onComplete={() => setActiveMenu('library')} />}

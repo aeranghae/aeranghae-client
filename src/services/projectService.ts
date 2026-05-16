@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-//DTO 규격에 맞춘 타입 정의
+//ProjectCreateRequestDto 규격에 맞춘 타입 정의
 export interface ProjectCreateRequestDto {
   projectName: string;
   framework: string;
@@ -8,6 +8,17 @@ export interface ProjectCreateRequestDto {
   license: string;
   model: string;
   prompt: string;
+}
+
+//ProjectResponseDto 규격에 맞춘 타입 정의
+export interface ProjectResponseDto {
+  projectName: string;
+  uuid: string;
+  model: string;
+  createdAt: string;
+  lastModified: string;
+  size: number;
+  fileCount: number;
 }
 
 //서버 주소
@@ -38,6 +49,17 @@ export const projectService = {
       return response.data;
     } catch (error) {
       console.error("프로젝트 생성 API 에러:", error);
+      throw error;
+    }
+  },
+
+  //프로젝트 전체 목록 조회 (GET)
+  getProjects: async (): Promise<ProjectResponseDto[]> => {
+    try {
+      const response = await API.get('/api/storage/projects');
+      return response.data; // List<ProjectResponseDto> 형태의 배열 데이터 반환
+    } catch (error) {
+      console.error("프로젝트 목록 조회 에러:", error);
       throw error;
     }
   }
