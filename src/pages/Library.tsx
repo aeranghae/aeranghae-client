@@ -1,5 +1,5 @@
-import React from 'react';
-import { Search, Folder, MoreVertical, Calendar, Download, RefreshCw, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Folder, MoreVertical, Calendar, Download, RefreshCw, CheckCircle2, Trash2 } from 'lucide-react';
 
 // Props 인터페이스 정의
 interface LibraryProps {
@@ -8,14 +8,24 @@ interface LibraryProps {
 }
 
 const Library: React.FC<LibraryProps> = ({ projects, setActiveMenu }) => {
+  // 어떤 카드의 '...' 메뉴가 열려있는지 관리하는 상태
+  const [activeMenuId, setActiveMenuId] = useState<any | null>(null);
+  // 현재 삭제 확인 모달을 띄울 프로젝트 상태
+  const [projectToDelete, setProjectToDelete] = useState<any | null>(null);
   
   const handleProjectClick = (item: any) => {
     if (item.status === 'processing') {
       setActiveMenu('processing');
     } else {
-      // 나중에 상세페이지 구현 시 setActiveMenu('detail') 등으로 확장
       setActiveMenu('detail');
     }
+  };
+
+  //최종 삭제 확인 시 모달을 닫아주는 임시 핸들러 (API는 나중에 연결)
+  const handleConfirmDeleteUI = () => {
+    setProjectToDelete(null);
+    setActiveMenuId(null);
+    alert("UI 테스트: 삭제 버튼이 정상적으로 클릭되었습니다.");
   };
 
   return (
@@ -37,7 +47,6 @@ const Library: React.FC<LibraryProps> = ({ projects, setActiveMenu }) => {
 
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-10">
-          {/*App.tsx에서 넘겨받은 projects 배열이 비어있지 않은지 확인 */}
           {projects && projects.length > 0 ? (
             projects.map((item) => (
               <div 
@@ -51,7 +60,37 @@ const Library: React.FC<LibraryProps> = ({ projects, setActiveMenu }) => {
                     ${item.status === 'processing' ? 'bg-blue-500 text-white animate-pulse' : 'bg-white/5 text-blue-400 group-hover:bg-blue-500 group-hover:text-white'}`}>
                     {item.status === 'processing' ? <RefreshCw size={24} className="animate-spin" /> : <Folder size={24} />}
                   </div>
-                  <MoreVertical size={20} className="text-gray-600 hover:text-white" />
+                  
+                  {/*더보기 메뉴 및 삭제 버튼 영역 */}
+                  <div className="relative">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation(); //카드 디테일 이동 차단
+                        setActiveMenuId(activeMenuId === item.id ? null : item.id);
+                      }}
+                      className="p-1 rounded-lg hover:bg-white/5 text-gray-600 hover:text-white transition-all"
+                    >
+                      <MoreVertical size={20} />
+                    </button>
+
+                    {activeMenuId === item.id && (
+                      <>
+                        {/* 바깥 클릭 시 메뉴가 닫히게 하는 투명 레이어 */}
+                        <div className="fixed inset-0 z-40 cursor-default" onClick={(e) => { e.stopPropagation(); setActiveMenuId(null); }} />
+                        <div className="absolute right-0 mt-2 w-36 bg-[#242426] border border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation(); //카드 디테일 이동 차단
+                              setProjectToDelete(item);
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+                          >
+                            <Trash2 size={14} /> 프로젝트 삭제
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
                 
                 <h3 className="font-bold text-xl mb-1 truncate">{item.title}</h3>
@@ -79,7 +118,6 @@ const Library: React.FC<LibraryProps> = ({ projects, setActiveMenu }) => {
               </div>
             ))
           ) : (
-            /* 프로젝트가 하나도 없을 때 보여줄 화면 */
             <div className="col-span-3 py-20 text-center bg-white/5 border border-dashed border-white/10 rounded-[40px]">
               <p className="text-gray-500 font-bold">저장된 프로젝트가 없습니다.</p>
               <p className="text-xs text-gray-600 mt-2">새 프로젝트 생성을 시작해 보세요.</p>
@@ -87,6 +125,36 @@ const Library: React.FC<LibraryProps> = ({ projects, setActiveMenu }) => {
           )}
         </div>
       </div>
+
+      {/* 삭제 확인 팝업 모달 */}
+      {projectToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[110] animate-in fade-in duration-200">
+          <div className="bg-[#242426] border border-white/10 w-full max-w-sm rounded-[32px] p-6 shadow-2xl text-center animate-in zoom-in-95 duration-150 text-white">
+            <div className="w-14 h-14 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={24} />
+            </div>
+            <h3 className="text-lg font-bold mb-2">프로젝트 삭제</h3>
+            <p className="text-xs text-gray-400 leading-relaxed mb-6">
+              정말로 <span className="text-white font-bold">"{projectToDelete.title}"</span>을<br/>
+              삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setProjectToDelete(null)}
+                className="flex-1 py-3.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-xs font-bold text-gray-400 transition-all"
+              >
+                취소
+              </button>
+              <button 
+                onClick={handleConfirmDeleteUI}
+                className="flex-1 py-3.5 bg-red-600 hover:bg-red-500 rounded-xl text-xs font-bold text-white transition-all shadow-lg shadow-red-600/20"
+              >
+                삭제하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
