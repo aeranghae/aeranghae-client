@@ -62,5 +62,31 @@ export const projectService = {
       console.error("프로젝트 목록 조회 에러:", error);
       throw error;
     }
+  },
+
+  //프로젝트 이름 변경(PATCH)
+  updateProjectName: async (uuid: string, newName: string) => {
+    try {
+      // URL 경로에 uuid를 넣고, Body에 newName을 JSON으로 전달
+      const response = await API.patch(`/api/storage/projects/${uuid}`, {
+        newName: newName
+      });
+      return response.data;
+    } catch (error) {
+      console.error("프로젝트 이름 변경 API 에러:", error);
+      throw error;
+    }
+  },
+
+  //프로젝트 삭제(DELETE)
+  deleteProject: async (uuid: string) => {
+    try {
+      // URL 경로에 uuid를 실어서 DELETE 요청을 보냅니다. Body 데이터는 필요 없습니다.
+      const response = await API.delete(`/api/storage/projects/${uuid}`);
+      return response.data;
+    } catch (error) {
+      console.error("프로젝트 삭제 API 에러:", error);
+      throw error;
+    }
   }
 };

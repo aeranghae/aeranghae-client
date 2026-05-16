@@ -14,32 +14,24 @@ const Library: React.FC<LibraryProps> = ({ setActiveMenu }) => {
   const [projectToDelete, setProjectToDelete] = useState<ProjectResponseDto | null>(null);
   
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null); 
-  const [editTitleInput, setEditTitleInput] = useState<string>(''); 
+  const [editTitleInput, setEditTitleInput] = useState<string>('');
+  
+  //중복 호출을 막고 재사용하기 위해 프로젝트 목록 가져오는 함수를 밖으로 분리
+  const fetchProjects = async () => {
+    try {
+      setIsLoading(true);
+      const data = await projectService.getProjects();
+      setProjectsList(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("라이브러리 목록 로드 실패:", error);
+      alert("프로젝트 목록을 불러오는 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let isMounted = true;
-
-    const fetchProjects = async () => {
-      try {
-        setIsLoading(true);
-        const data = await projectService.getProjects();
-        if (isMounted) {
-          // 서버 데이터가 배열 형태인지 안전하게 검사 후 저장
-          setProjectsList(Array.isArray(data) ? data : []);
-        }
-      } catch (error) {
-        console.error("라이브러리 목록 로드 실패:", error);
-        alert("프로젝트 목록을 불러오는 중 오류가 발생했습니다.");
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-
     fetchProjects();
-
-    return () => {
-      isMounted = false;
-    };
   }, []);
 
   const handleProjectClick = (item: ProjectResponseDto) => {
@@ -54,16 +46,55 @@ const Library: React.FC<LibraryProps> = ({ setActiveMenu }) => {
     setActiveMenuId(null); 
   };
 
-  const handleSaveTitleUI = () => {
-    setEditingProjectId(null);
-    alert(`UI 테스트: "${editTitleInput}"(으)로 이름 변경 요청 준비 완료!`);
+  const handleSaveTitleUI = async () => {
+    if (!editingProjectId) return;
+    if (!editTitleInput.trim()) {
+      alert("변경할 이름을 입력해 주세요.");
+      return;
+    }
+
+    try {
+      setIsLoading(true); // 로딩 스피너 켜기
+      
+      // 1. PATCH 요청 전송
+      await projectService.updateProjectName(editingProjectId, editTitleInput);
+      
+      // 2. 수정 모드 종료
+      setEditingProjectId(null);
+      
+      // 3.이름이 변경되었으므로 프로젝트 목록을 다시 서버에서 불러와 동기화(갱신)
+      await fetchProjects();
+      
+    } catch (error) {
+      alert("이름 변경 중 오류가 발생했습니다. 다시 시도해 주세요.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleConfirmDeleteUI = () => {
+ const handleConfirmDeleteUI = async () => {
+  // 🛡️ 안전장치: 현재 선택된 삭제 대상 프로젝트나 uuid가 없으면 실행 안 함
+  if (!projectToDelete || !projectToDelete.uuid) return;
+
+  try {
+    setIsLoading(true); // 로딩 스피너 켜기
+
+    // 1. 서버에 해당 uuid 삭제 요청 전송
+    await projectService.deleteProject(projectToDelete.uuid);
+
+    // 2. 모달창 닫기 및 활성화된 더보기 메뉴 초기화
     setProjectToDelete(null);
     setActiveMenuId(null);
-    alert("UI 테스트: 삭제 버튼이 정상적으로 클릭되었습니다.");
-  };
+
+    // 3. 삭제가 완료되었으므로 프로젝트 목록을 서버에서 새로 받아와 갱신
+    await fetchProjects();
+
+  } catch (error) {
+    alert("프로젝트 삭제 중 오류가 발생했습니다. 다시 시도해 주세요.");
+  } finally {
+    setIsLoading(false); // 로딩 꺼주기
+  }
+};
 
   return (
     <div className="flex flex-col h-full overflow-hidden relative text-white">
