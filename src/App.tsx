@@ -16,6 +16,9 @@ function App() {
   const [isGuest, setIsGuest] = useState(false); 
   const [isLoading, setIsLoading] = useState(true);
 
+  //동적 연동을 위해 현재 선택된 프로젝트의 UUID를 보관할 상태 주머니 추가
+  const [activeProjectUuid, setActiveProjectUuid] = useState<string>('');
+
   // 라이브러리에서 관리할 프로젝트 리스트 상태
   const [projects, setProjects] = useState([
     { id: 'p1', title: '사내 업무 자동화', status: 'completed', progress: 100, date: '2024.03.15', items: 12 },
@@ -131,14 +134,19 @@ function App() {
             {/* onGenerate 클릭 시 handleGenerate 함수를 실행하여 라이브러리로 이동 */}
             {activeMenu === 'create' && <CreateProject onGenerate={handleGenerate} />}
             
-            {/* 라이브러리에 프로젝트 리스트와 메뉴 변경 함수 전달 */}
-            {activeMenu === 'library' && <Library setActiveMenu={setActiveMenu} />}
+            {/*라이브러리에 선택 콜백 함수(onSelectProject)를 추가로 전달 */}
+            {activeMenu === 'library' && (
+              <Library 
+                setActiveMenu={setActiveMenu} 
+                onSelectProject={(uuid) => setActiveProjectUuid(uuid)} 
+              />
+            )}
             
             {/* 라이브러리에서 클릭 시 진입하는 프로세싱 뷰 */}
             {activeMenu === 'processing' && <ProcessingView onComplete={() => setActiveMenu('library')} />}
 
-              {/* ✅ 추가: 완료된 프로젝트 클릭 시 보여줄 상세 페이지 */}
-            {activeMenu === 'detail' && <ProjectDetail />}
+              {/*부모의 activeProjectUuid 진짜 상태값을 상세 페이지에 Props로 연동 */}
+            {activeMenu === 'detail' && <ProjectDetail projectUuid={activeProjectUuid} />}
             
             {activeMenu === 'settings' && <Settings />}
           </main>

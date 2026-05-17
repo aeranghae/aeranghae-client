@@ -1,16 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Folder, File, Cpu, Sparkles, RefreshCw, 
   Code2, Info, FileCode, Terminal, Globe, ChevronRight 
 } from 'lucide-react';
+import { storageService, ProjectNode } from '../services/storageService';
 
-const ProjectDetail: React.FC = () => {
+interface ProjectDetailProps {
+  projectUuid?: string; 
+}
+
+const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectUuid }) => {
   const [activeTab, setActiveTab] = useState<'code' | 'info'>('code');
   const [selectedFile, setSelectedFile] = useState('MainLogic.java');
   const [modifyPrompt, setModifyPrompt] = useState('');
   const [isModifying, setIsModifying] = useState(false);
 
-  // 1. 파일별 코드 데이터 정의
+  const [serverFiles, setServerFiles] = useState<ProjectNode[]>([]);
+  const [isTreeLoading, setIsTreeLoading] = useState<boolean>(false);
+  
+  //[중복 호출 방지용 ref] StrictMode가 useEffect를 두 번 실행해도 같은 UUID는 한 번만 fetch
+  const fetchedUuidRef = useRef<string | null>(null);
+
   const fileContent: { [key: string]: string } = {
     'App.tsx': `import React from 'react';\n\nexport const App = () => {\n  return <div>Pet Health Monitor</div>;\n};`,
     'MainLogic.java': `public class PetHealthMonitor {\n  private int dogAge = 12;\n  public void checkVitals() {\n    System.out.println("Monitoring...");\n  }\n}`,
@@ -20,14 +30,91 @@ const ProjectDetail: React.FC = () => {
     'package.json': `{\n  "name": "senior-pet-care",\n  "version": "1.0.4"\n}`
   };
 
-  // 2. 파일 트리 구조 정의
-  const files = [
-    { name: 'src', children: ['App.tsx', 'MainLogic.java', 'styles.css'] },
-    { name: 'config', children: ['database.sql', 'env.json'] },
-    { name: 'package.json', type: 'file' }
-  ];
+  const parseFlatToTree = (flatList: any[]) => {
+    const root: ProjectNode[] = [];
+    const lookup: { [key: string]: ProjectNode } = {};
 
-  // AI 수정 요청 핸들러
+    flatList.forEach((node) => {
+      const parts = node.path.split('/');
+      const name = parts[parts.length - 1]; 
+      
+      const newNode: ProjectNode = {
+        name: name,
+        type: node.type === 'DIR' ? 'DIRECTORY' : 'FILE',
+        children: node.type === 'DIR' ? [] : undefined
+      };
+
+      (newNode as any).path = node.path;
+      lookup[node.path] = newNode;
+
+      if (parts.length === 1) {
+        root.push(newNode); 
+      } else {
+        const parentPath = parts.slice(0, -1).join('/');
+        if (lookup[parentPath]) {
+          lookup[parentPath].children?.push(newNode);
+        } else {
+          root.push(newNode);
+        }
+      }
+    });
+
+    return root;
+  };
+
+  // 컴포넌트 로드 시 백엔드로부터 트리 데이터를 수혈받는 전용 훅
+  useEffect(() => {
+    const fetchProjectTree = async () => {
+      // UUID가 유효하지 않거나 undefined 문자열, 혹은 빈 값일 때는 서버 찌르기 x
+      if (!projectUuid || 
+          projectUuid.trim() === "" || 
+          projectUuid === "undefined" || 
+          projectUuid.length < 30) {
+        console.log("[대기] 유효한 프로젝트 UUID가 확보되지 않아 API 요청을 차단했습니다.");
+        return; 
+      }
+
+      //  StrictMode 더블 실행이든, 동일 UUID 재진입이든, 이미 fetch한 건 스킵
+      if (fetchedUuidRef.current === projectUuid) {
+        console.log(`[중복 차단] UUID ${projectUuid} 는 이미 조회 완료. 재요청 스킵.`);
+        return;
+      }
+      fetchedUuidRef.current = projectUuid; // fetch 시작 시 즉시 기록 (race condition 방지)
+      
+      setIsTreeLoading(true);
+      try {
+        console.log(`[API 발사] 검증 완료된 UUID로 트리를 조회합니다: ${projectUuid}`);
+        const data = await storageService.getProjectTree(projectUuid);
+        
+        // 정상적으로 데이터를 가져왔을 때만 파싱해서 세팅 (실패 시 기존 화면 유지)
+        if (data && Array.isArray(data)) {
+          const parsedTree = parseFlatToTree(data);
+          setServerFiles(parsedTree);
+          
+          if (parsedTree.length > 0) {
+            const firstNode = parsedTree[0];
+            if (firstNode.type === 'FILE') {
+              setSelectedFile(firstNode.name);
+            } else if (firstNode.children && firstNode.children.length > 0) {
+              setSelectedFile(firstNode.children[0].name);
+            }
+          }
+        } else {
+          setServerFiles([]);
+        }
+      } catch (error) {
+        console.error("화면에 프로젝트 트리를 바인딩하지 못했습니다:", error);
+        // 실패 시 ref 초기화 - 사용자가 재진입 시 다시 시도 가능하도록
+        fetchedUuidRef.current = null;
+        setServerFiles([]);
+      } finally {
+        setIsTreeLoading(false);
+      }
+    };
+
+    fetchProjectTree();
+  }, [projectUuid]); // 완벽한 진짜 UUID가 들어왔거나 변경될 때만 정조준 실행
+
   const handleModifyRequest = () => {
     if (!modifyPrompt.trim()) return;
     setIsModifying(true);
@@ -82,37 +169,47 @@ const ProjectDetail: React.FC = () => {
               <p className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
                 <ChevronRight size={12} className="text-blue-500" /> Project Explorer
               </p>
-              <div className="space-y-6">
-                {files.map((item, idx) => (
-                  <div key={idx} className="space-y-3">
-                    {item.children ? (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-[14px] text-blue-400/80 font-black uppercase tracking-tighter">
-                          <Folder size={14} className="fill-blue-500/20" /> {item.name}
+              
+              {isTreeLoading ? (
+                <div className="text-xs text-gray-500 font-mono flex items-center gap-2">
+                  <RefreshCw size={12} className="animate-spin text-blue-500" /> 트리 구조 동기화 중...
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {serverFiles.map((item, idx) => (
+                    <div key={idx} className="space-y-3">
+                      {item.type === 'DIRECTORY' || item.children ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-[14px] text-blue-400/80 font-black uppercase tracking-tighter">
+                            <Folder size={14} className="fill-blue-500/20" /> {item.name}
+                          </div>
+                          <div className="pl-5 space-y-2.5 border-l border-l-white/5 ml-1.5">
+                            {item.children?.map((childNode: any) => {
+                              const childName = typeof childNode === 'string' ? childNode : childNode.name;
+                              return (
+                                <button 
+                                  key={childName}
+                                  onClick={() => setSelectedFile(childName)}
+                                  className={`flex items-center gap-2 text-[13px] w-full text-left transition-all hover:translate-x-1 ${selectedFile === childName ? 'text-blue-400 font-bold' : 'text-gray-500 hover:text-gray-300'}`}
+                                >
+                                  <File size={12} className={selectedFile === childName ? 'text-blue-400' : 'text-gray-600'} /> {childName}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
-                        <div className="pl-5 space-y-2.5 border-l border-white/5 ml-1.5">
-                          {item.children.map(file => (
-                            <button 
-                              key={file}
-                              onClick={() => setSelectedFile(file)}
-                              className={`flex items-center gap-2 text-[13px] w-full text-left transition-all hover:translate-x-1 ${selectedFile === file ? 'text-blue-400 font-bold' : 'text-gray-500 hover:text-gray-300'}`}
-                            >
-                              <File size={12} className={selectedFile === file ? 'text-blue-400' : 'text-gray-600'} /> {file}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <button 
-                        onClick={() => setSelectedFile(item.name)}
-                        className={`flex items-center gap-2 text-[11px] w-full text-left transition-all hover:translate-x-1 ${selectedFile === item.name ? 'text-blue-400 font-bold' : 'text-gray-500 hover:text-gray-300'}`}
-                      >
-                        <File size={12} className={selectedFile === item.name ? 'text-blue-400' : 'text-gray-600'} /> {item.name}
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      ) : (
+                        <button 
+                          onClick={() => setSelectedFile(item.name)}
+                          className={`flex items-center gap-2 text-[13px] w-full text-left transition-all hover:translate-x-1 ${selectedFile === item.name ? 'text-blue-400 font-bold' : 'text-gray-500 hover:text-gray-300'}`}
+                        >
+                          <File size={12} className={selectedFile === item.name ? 'text-blue-400' : 'text-gray-600'} /> {item.name}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </aside>
 
             {/* 중앙: 코드 편집기 */}
@@ -148,17 +245,17 @@ const ProjectDetail: React.FC = () => {
                         value={modifyPrompt}
                         onChange={(e) => setModifyPrompt(e.target.value)}
                         onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) { // Shift+Enter는 줄바꿈, 그냥 Enter는 전송
+                            if (e.key === 'Enter' && !e.shiftKey) { 
                             e.preventDefault();
                             handleModifyRequest();
                             }
                         }}
-                        rows={1} // 기본 높이
+                        rows={1}
                         className="w-full bg-transparent py-4 pl-12 pr-40 outline-none text-sm text-gray-200 placeholder:text-gray-600 transition-all resize-none min-h-[56px] max-h-[200px] custom-scrollbar"
                         placeholder="수정하고 싶은 내용을 입력하세요."
                         />
 
-                        <div className="absolute left-5 bottom-6"> {/* bottom 위치 조정 */}
+                        <div className="absolute left-5 bottom-6">
                         <Cpu size={22} className={`${isModifying ? 'text-purple-500' : 'text-gray-600 group-focus-within:text-blue-500'} transition-colors duration-500`} />
                         </div>
 

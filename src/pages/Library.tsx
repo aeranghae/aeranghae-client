@@ -4,9 +4,10 @@ import { projectService, ProjectResponseDto } from '../services/projectService';
 
 interface LibraryProps {
   setActiveMenu: (menu: string) => void;
+  onSelectProject?: (uuid: string) => void;
 }
 
-const Library: React.FC<LibraryProps> = ({ setActiveMenu }) => {
+const Library: React.FC<LibraryProps> = ({ setActiveMenu, onSelectProject }) => {
   const [projectsList, setProjectsList] = useState<ProjectResponseDto[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   
@@ -36,6 +37,10 @@ const Library: React.FC<LibraryProps> = ({ setActiveMenu }) => {
 
   const handleProjectClick = (item: ProjectResponseDto) => {
     if (!item || !item.uuid || editingProjectId === item.uuid) return;
+
+    if (onSelectProject) {
+      onSelectProject(item.uuid);
+    }
     setActiveMenu('detail');
   };
 
@@ -73,7 +78,7 @@ const Library: React.FC<LibraryProps> = ({ setActiveMenu }) => {
   };
 
  const handleConfirmDeleteUI = async () => {
-  // 🛡️ 안전장치: 현재 선택된 삭제 대상 프로젝트나 uuid가 없으면 실행 안 함
+  //안전장치: 현재 선택된 삭제 대상 프로젝트나 uuid가 없으면 실행 안 함
   if (!projectToDelete || !projectToDelete.uuid) return;
 
   try {
