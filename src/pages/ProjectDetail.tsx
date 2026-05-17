@@ -1,13 +1,77 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Folder, File, Cpu, Sparkles, RefreshCw, 
-  Code2, Info, FileCode, Terminal, Globe, ChevronRight 
+  Folder, FolderOpen, File, Cpu, Sparkles, RefreshCw, 
+  Code2, Info, FileCode, Terminal, Globe, ChevronRight, ChevronDown
 } from 'lucide-react';
 import { storageService, ProjectNode } from '../services/storageService';
 
 interface ProjectDetailProps {
   projectUuid?: string; 
 }
+
+//[재귀 트리 노드 컴포넌트]깊이에 상관없이 모든 자식을 펼치도록 자기 자신을 호출
+interface TreeNodeProps {
+  node: ProjectNode;
+  depth: number;
+  selectedFile: string;
+  onSelectFile: (fileName: string) => void;
+}
+
+const TreeNode: React.FC<TreeNodeProps> = ({ node, depth, selectedFile, onSelectFile }) => {
+  const [isOpen, setIsOpen] = useState<boolean>(depth < 2); // 깊이 0,1은 기본 펼침 / 2단계부터는 접힘
+
+  // 파일 노드 렌더링
+  if (node.type === 'FILE') {
+    return (
+      <button 
+        onClick={() => onSelectFile(node.name)}
+        className={`flex items-center gap-2 text-[13px] w-full text-left transition-all hover:translate-x-1 py-0.5 ${selectedFile === node.name ? 'text-blue-400 font-bold' : 'text-gray-500 hover:text-gray-300'}`}
+      >
+        <File size={12} className={selectedFile === node.name ? 'text-blue-400' : 'text-gray-600'} /> 
+        {node.name}
+      </button>
+    );
+  }
+
+  // 디렉토리 노드 렌더링 (자식이 있으면 재귀 호출)
+  return (
+    <div className="space-y-1.5">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex items-center gap-1.5 w-full text-left transition-all hover:opacity-80 ${
+          depth === 0 
+            ? 'text-[14px] text-blue-400/80 font-black uppercase tracking-tighter' 
+            : 'text-[13px] text-blue-300/70 font-bold'
+        }`}
+      >
+        {isOpen 
+          ? <ChevronDown size={12} className="text-blue-500/70 shrink-0" /> 
+          : <ChevronRight size={12} className="text-blue-500/70 shrink-0" />
+        }
+        {isOpen 
+          ? <FolderOpen size={14} className="fill-blue-500/20 shrink-0" /> 
+          : <Folder size={14} className="fill-blue-500/20 shrink-0" />
+        }
+        <span className="truncate">{node.name}</span>
+      </button>
+
+      {/*자식이 있고 펼침 상태면 재귀적으로 자식 노드들을 렌더링 */}
+      {isOpen && node.children && node.children.length > 0 && (
+        <div className="pl-4 space-y-1.5 border-l border-l-white/5 ml-1.5">
+          {node.children.map((childNode, idx) => (
+            <TreeNode 
+              key={`${childNode.name}-${idx}`}
+              node={childNode}
+              depth={depth + 1}
+              selectedFile={selectedFile}
+              onSelectFile={onSelectFile}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectUuid }) => {
   const [activeTab, setActiveTab] = useState<'code' | 'info'>('code');
@@ -18,7 +82,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectUuid }) => {
   const [serverFiles, setServerFiles] = useState<ProjectNode[]>([]);
   const [isTreeLoading, setIsTreeLoading] = useState<boolean>(false);
   
-  //[중복 호출 방지용 ref] StrictMode가 useEffect를 두 번 실행해도 같은 UUID는 한 번만 fetch
   const fetchedUuidRef = useRef<string | null>(null);
 
   const fileContent: { [key: string]: string } = {
@@ -34,7 +97,15 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectUuid }) => {
     const root: ProjectNode[] = [];
     const lookup: { [key: string]: ProjectNode } = {};
 
-    flatList.forEach((node) => {
+    // 🟢 [정렬 추가] 부모가 자식보다 먼저 처리되도록 path 길이 오름차순 정렬
+    //    이렇게 해야 깊은 경로(src/main/java/com)가 와도 lookup에서 부모를 항상 찾을 수 있음
+    const sortedList = [...flatList].sort((a, b) => {
+      const aDepth = a.path.split('/').length;
+      const bDepth = b.path.split('/').length;
+      return aDepth - bDepth;
+    });
+
+    sortedList.forEach((node) => {
       const parts = node.path.split('/');
       const name = parts[parts.length - 1]; 
       
@@ -54,6 +125,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectUuid }) => {
         if (lookup[parentPath]) {
           lookup[parentPath].children?.push(newNode);
         } else {
+          // 부모를 못 찾으면 root로 (안전망)
           root.push(newNode);
         }
       }
@@ -62,10 +134,8 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectUuid }) => {
     return root;
   };
 
-  // 컴포넌트 로드 시 백엔드로부터 트리 데이터를 수혈받는 전용 훅
   useEffect(() => {
     const fetchProjectTree = async () => {
-      // UUID가 유효하지 않거나 undefined 문자열, 혹은 빈 값일 때는 서버 찌르기 x
       if (!projectUuid || 
           projectUuid.trim() === "" || 
           projectUuid === "undefined" || 
@@ -74,37 +144,42 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectUuid }) => {
         return; 
       }
 
-      //  StrictMode 더블 실행이든, 동일 UUID 재진입이든, 이미 fetch한 건 스킵
       if (fetchedUuidRef.current === projectUuid) {
         console.log(`[중복 차단] UUID ${projectUuid} 는 이미 조회 완료. 재요청 스킵.`);
         return;
       }
-      fetchedUuidRef.current = projectUuid; // fetch 시작 시 즉시 기록 (race condition 방지)
+      fetchedUuidRef.current = projectUuid;
       
       setIsTreeLoading(true);
       try {
         console.log(`[API 발사] 검증 완료된 UUID로 트리를 조회합니다: ${projectUuid}`);
         const data = await storageService.getProjectTree(projectUuid);
         
-        // 정상적으로 데이터를 가져왔을 때만 파싱해서 세팅 (실패 시 기존 화면 유지)
         if (data && Array.isArray(data)) {
           const parsedTree = parseFlatToTree(data);
           setServerFiles(parsedTree);
           
-          if (parsedTree.length > 0) {
-            const firstNode = parsedTree[0];
-            if (firstNode.type === 'FILE') {
-              setSelectedFile(firstNode.name);
-            } else if (firstNode.children && firstNode.children.length > 0) {
-              setSelectedFile(firstNode.children[0].name);
+          //[재귀적으로 첫 번째 파일 찾기] 깊은 트리에서도 첫 파일을 찾아 선택
+          const findFirstFile = (nodes: ProjectNode[]): string | null => {
+            for (const n of nodes) {
+              if (n.type === 'FILE') return n.name;
+              if (n.children && n.children.length > 0) {
+                const found = findFirstFile(n.children);
+                if (found) return found;
+              }
             }
+            return null;
+          };
+          
+          const firstFileName = findFirstFile(parsedTree);
+          if (firstFileName) {
+            setSelectedFile(firstFileName);
           }
         } else {
           setServerFiles([]);
         }
       } catch (error) {
         console.error("화면에 프로젝트 트리를 바인딩하지 못했습니다:", error);
-        // 실패 시 ref 초기화 - 사용자가 재진입 시 다시 시도 가능하도록
         fetchedUuidRef.current = null;
         setServerFiles([]);
       } finally {
@@ -113,7 +188,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectUuid }) => {
     };
 
     fetchProjectTree();
-  }, [projectUuid]); // 완벽한 진짜 UUID가 들어왔거나 변경될 때만 정조준 실행
+  }, [projectUuid]);
 
   const handleModifyRequest = () => {
     if (!modifyPrompt.trim()) return;
@@ -175,38 +250,16 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectUuid }) => {
                   <RefreshCw size={12} className="animate-spin text-blue-500" /> 트리 구조 동기화 중...
                 </div>
               ) : (
-                <div className="space-y-6">
+                /*[재귀 트리 렌더링] 깊이에 상관없이 모든 자식을 펼침 */
+                <div className="space-y-3">
                   {serverFiles.map((item, idx) => (
-                    <div key={idx} className="space-y-3">
-                      {item.type === 'DIRECTORY' || item.children ? (
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-[14px] text-blue-400/80 font-black uppercase tracking-tighter">
-                            <Folder size={14} className="fill-blue-500/20" /> {item.name}
-                          </div>
-                          <div className="pl-5 space-y-2.5 border-l border-l-white/5 ml-1.5">
-                            {item.children?.map((childNode: any) => {
-                              const childName = typeof childNode === 'string' ? childNode : childNode.name;
-                              return (
-                                <button 
-                                  key={childName}
-                                  onClick={() => setSelectedFile(childName)}
-                                  className={`flex items-center gap-2 text-[13px] w-full text-left transition-all hover:translate-x-1 ${selectedFile === childName ? 'text-blue-400 font-bold' : 'text-gray-500 hover:text-gray-300'}`}
-                                >
-                                  <File size={12} className={selectedFile === childName ? 'text-blue-400' : 'text-gray-600'} /> {childName}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ) : (
-                        <button 
-                          onClick={() => setSelectedFile(item.name)}
-                          className={`flex items-center gap-2 text-[13px] w-full text-left transition-all hover:translate-x-1 ${selectedFile === item.name ? 'text-blue-400 font-bold' : 'text-gray-500 hover:text-gray-300'}`}
-                        >
-                          <File size={12} className={selectedFile === item.name ? 'text-blue-400' : 'text-gray-600'} /> {item.name}
-                        </button>
-                      )}
-                    </div>
+                    <TreeNode 
+                      key={`${item.name}-${idx}`}
+                      node={item}
+                      depth={0}
+                      selectedFile={selectedFile}
+                      onSelectFile={setSelectedFile}
+                    />
                   ))}
                 </div>
               )}
