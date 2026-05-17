@@ -273,3 +273,52 @@ pre[class*="language-"] {
   cursor: pointer;
   font-weight: bold;
 }
+
+/* ========================================
+   스포트라이트 카드 효과
+======================================== */
+.spotlight-cards {
+  position: relative;
+}
+
+.spotlight-card {
+  --hsl: var(--hue), var(--saturation), var(--lightness);
+  flex: 1 1 14rem;
+  max-width: 22rem;
+  border-radius: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.05);
+  transition: background 400ms ease;
+  will-change: background;
+}
+
+.spotlight-card:hover {
+  background: hsla(var(--hsl), 0.08);
+}
+
+.spotlight-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+  opacity: var(--opacity, 0);
+  -webkit-mask: radial-gradient(
+    var(--spotlight-radius, 25rem) var(--spotlight-radius, 25rem) at var(--x) var(--y),
+    #000 1%,
+    transparent 50%
+  );
+  mask: radial-gradient(
+    var(--spotlight-radius, 25rem) var(--spotlight-radius, 25rem) at var(--x) var(--y),
+    #000 1%,
+    transparent 50%
+  );
+  transition: 400ms mask ease, 400ms -webkit-mask ease;
+  will-change: mask;
+}
+
+.spotlight-card--overlay {
+  background-color: hsla(var(--hsl), 0.15) !important;
+  border-color: hsla(var(--hsl), 1) !important;
+  box-shadow: 0 0 0 1px inset hsl(var(--hsl)),
+              0 0 30px hsla(var(--hsl), 0.3);
+}

@@ -5,6 +5,8 @@ import {
   Terminal, BookOpen, Layers, Cpu, Layout
 } from 'lucide-react';
 import { projectService, ProjectCreateRequestDto } from '../services/projectService';
+import SpotlightCardGroup, { SpotlightCardData } from '../components/SpotlightCardGroup';
+
 interface CreateProjectProps {
   onGenerate: (data: any) => void;
 }
@@ -299,32 +301,66 @@ const CreateProject: React.FC<CreateProjectProps> = ({ onGenerate }) => {
         );
 
       case 2:
+        const stackCards: SpotlightCardData[] = (formData.finalAnalysis?.recommended_stack || []).map((stack, i) => ({
+          id: `stack-${i}`,
+          hue: stack.type === 'Frontend' ? 190 : 160,
+          saturation: 85,
+          lightness: 55,
+          content: (
+            <div className="p-12 flex flex-col items-center text-center h-full relative group">
+              <div className="absolute top-8 left-1/2 -translate-x-1/2 text-[9px] font-black text-emerald-500/30 uppercase tracking-[0.3em]">
+                {stack.type}
+              </div>
+              <div className="w-20 h-20 bg-emerald-500/10 rounded-[28px] flex items-center justify-center text-emerald-400 mb-8 mt-6 border border-emerald-500/20 group-hover:scale-105 transition-transform">
+                {stack.type === 'Frontend' ? <Layout size={36} /> : <Cpu size={36} />}
+              </div>
+              <h4 className="text-2xl font-black mb-3 tracking-tighter italic uppercase">{stack.name}</h4>
+              <p className="text-xs text-gray-500 leading-relaxed italic px-4">"{stack.reason}"</p>
+            </div>
+          ),
+        }));
+
         return (
           <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-8 duration-500">
-            <div className="mb-10 text-center">
+            {/* 상단 헤더 - 마진 축소 */}
+            <div className="mb-45 text-center shrink-0">
               <h3 className="text-[11px] font-black text-emerald-400 uppercase tracking-[0.4em] mb-2">AI Recommended Frameworks</h3>
               <p className="text-gray-400 text-xs italic font-medium">AI가 추천하는 핵심 프레임워크 리스트입니다.</p>
             </div>
             
-            <div className="flex-1 flex items-center justify-center gap-10 max-w-5xl mx-auto w-full">
-              {formData.finalAnalysis?.recommended_stack.map((stack, i) => (
-                <div key={i} className="flex-1 bg-white/5 border border-white/10 rounded-[48px] p-12 flex flex-col items-center text-center shadow-2xl relative group">
-                  <div className="absolute top-8 left-1/2 -translate-x-1/2 text-[9px] font-black text-emerald-500/30 uppercase tracking-[0.3em]">{stack.type}</div>
-                  <div className="w-20 h-20 bg-emerald-500/10 rounded-[28px] flex items-center justify-center text-emerald-400 mb-8 border border-emerald-500/20 group-hover:scale-105 transition-transform">
-                    {stack.type === 'Frontend' ? <Layout size={36} /> : <Cpu size={36} />}
-                  </div>
-                  <h4 className="text-2xl font-black mb-3 tracking-tighter italic uppercase">{stack.name}</h4>
-                  <p className="text-xs text-gray-500 leading-relaxed italic px-4">"{stack.reason}"</p>
-                </div>
-              ))}
+            {/*중앙 카드 영역 - flex-1로 가운데 차지 */}
+            <div className="flex-1 flex items-center justify-center max-w-5xl mx-auto w-full min-h-0">
+              <SpotlightCardGroup cards={stackCards} />
             </div>
 
-            <div className="mt-10 bg-emerald-500/5 border border-emerald-500/10 rounded-3xl p-6 flex items-center gap-4 max-w-5xl mx-auto w-full">
-               <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400"><Info size={10}/></div>
-               <p className="text-[13px] text-gray-400 leading-relaxed font-medium">위 조합은 프로젝트의 기획 의도와 데이터 흐름에 최적화된 프레임워크입니다.</p>
+            {/*하단 안내 박스 - 마진 축소 + 버튼과 겹치지 않게 조정 */}
+            <div className="mt-45.5 mb-2 bg-emerald-500/5 border border-emerald-500/10 rounded-3xl p-4 flex items-center gap-4 max-w-5xl mx-auto w-full shrink-0">
+              <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400 shrink-0">
+                <Info size={10}/>
+              </div>
+              <p className="text-[13px] text-gray-400 leading-relaxed font-medium">위 조합은 프로젝트의 기획 의도와 데이터 흐름에 최적화된 프레임워크입니다.</p>
             </div>
           </div>
         );
+
+  return (
+    <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-8 duration-500">
+      <div className="mb-10 text-center">
+        <h3 className="text-[11px] font-black text-emerald-400 uppercase tracking-[0.4em] mb-2">AI Recommended Frameworks</h3>
+        <p className="text-gray-400 text-xs italic font-medium">AI가 추천하는 핵심 프레임워크 리스트입니다.</p>
+      </div>
+      
+      {/*[스포트라이트 카드 그룹 적용] */}
+      <div className="flex-1 flex items-center justify-center max-w-5xl mx-auto w-full">
+        <SpotlightCardGroup cards={stackCards} />
+      </div>
+
+      <div className="mt-10 bg-emerald-500/5 border border-emerald-500/10 rounded-3xl p-6 flex items-center gap-4 max-w-5xl mx-auto w-full">
+        <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400"><Info size={10}/></div>
+        <p className="text-[13px] text-gray-400 leading-relaxed font-medium">위 조합은 프로젝트의 기획 의도와 데이터 흐름에 최적화된 프레임워크입니다.</p>
+      </div>
+    </div>
+  );
 
       case 3:
         return (
