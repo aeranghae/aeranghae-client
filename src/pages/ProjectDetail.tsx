@@ -1,39 +1,122 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Folder, FolderOpen, File, Cpu, Sparkles, RefreshCw, 
-  Code2, Info, FileCode, Terminal, Globe, ChevronRight, ChevronDown
+  Code2, Info, FileCode, Terminal, Globe, ChevronRight, ChevronDown,
+  AlertCircle
 } from 'lucide-react';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { storageService, ProjectNode } from '../services/storageService';
 
 interface ProjectDetailProps {
   projectUuid?: string; 
 }
 
-//[재귀 트리 노드 컴포넌트]깊이에 상관없이 모든 자식을 펼치도록 자기 자신을 호출
+// [파일 확장자 → Prism 언어 식별자 매핑]
+// Prism이 알아듣는 언어명으로 매핑해야 정확한 하이라이팅이 적용됨
+const getLanguageFromPath = (filePath: string): string => {
+  if (!filePath) return 'text';
+  
+  const fileName = filePath.split('/').pop() || '';
+  const extension = fileName.includes('.') ? fileName.split('.').pop()?.toLowerCase() : '';
+  
+  // 확장자별 언어 매핑 테이블
+  const langMap: { [key: string]: string } = {
+    // JavaScript/TypeScript
+    'js': 'javascript',
+    'jsx': 'jsx',
+    'ts': 'typescript',
+    'tsx': 'tsx',
+    'mjs': 'javascript',
+    'cjs': 'javascript',
+    
+    // 백엔드 언어
+    'java': 'java',
+    'kt': 'kotlin',
+    'py': 'python',
+    'rb': 'ruby',
+    'go': 'go',
+    'rs': 'rust',
+    'php': 'php',
+    'cs': 'csharp',
+    'cpp': 'cpp',
+    'c': 'c',
+    'h': 'c',
+    'hpp': 'cpp',
+    
+    // 웹 마크업/스타일
+    'html': 'markup',
+    'htm': 'markup',
+    'xml': 'markup',
+    'svg': 'markup',
+    'css': 'css',
+    'scss': 'scss',
+    'sass': 'sass',
+    'less': 'less',
+    
+    // 데이터/설정 파일
+    'json': 'json',
+    'yml': 'yaml',
+    'yaml': 'yaml',
+    'toml': 'toml',
+    'ini': 'ini',
+    'env': 'bash',
+    
+    // 셸/빌드
+    'sh': 'bash',
+    'bash': 'bash',
+    'zsh': 'bash',
+    'gradle': 'groovy',
+    'groovy': 'groovy',
+    
+    // 데이터베이스
+    'sql': 'sql',
+    
+    // 문서
+    'md': 'markdown',
+    'markdown': 'markdown',
+    
+    // 기타
+    'dockerfile': 'docker',
+    'gitignore': 'bash',
+  };
+  
+  // 확장자 없는 특수 파일명 처리
+  if (!extension) {
+    const lowerName = fileName.toLowerCase();
+    if (lowerName === 'dockerfile') return 'docker';
+    if (lowerName === 'makefile') return 'makefile';
+    if (lowerName.startsWith('.git')) return 'bash';
+    return 'text';
+  }
+  
+  return langMap[extension] || 'text';
+};
+
+//[재귀 트리 노드 컴포넌트] 깊이에 상관없이 모든 자식을 펼치도록 자기 자신을 호출
 interface TreeNodeProps {
   node: ProjectNode;
   depth: number;
-  selectedFile: string;
-  onSelectFile: (fileName: string) => void;
+  selectedPath: string;
+  onSelectFile: (filePath: string) => void;
 }
 
-const TreeNode: React.FC<TreeNodeProps> = ({ node, depth, selectedFile, onSelectFile }) => {
-  const [isOpen, setIsOpen] = useState<boolean>(depth < 2); // 깊이 0,1은 기본 펼침 / 2단계부터는 접힘
+const TreeNode: React.FC<TreeNodeProps> = ({ node, depth, selectedPath, onSelectFile }) => {
+  const [isOpen, setIsOpen] = useState<boolean>(depth < 2);
+  const nodePath = (node as any).path || node.name;
 
-  // 파일 노드 렌더링
   if (node.type === 'FILE') {
     return (
       <button 
-        onClick={() => onSelectFile(node.name)}
-        className={`flex items-center gap-2 text-[13px] w-full text-left transition-all hover:translate-x-1 py-0.5 ${selectedFile === node.name ? 'text-blue-400 font-bold' : 'text-gray-500 hover:text-gray-300'}`}
+        onClick={() => onSelectFile(nodePath)}
+        className={`flex items-center gap-2 text-[13px] w-full text-left transition-all hover:translate-x-1 py-0.5 ${selectedPath === nodePath ? 'text-blue-400 font-bold' : 'text-gray-500 hover:text-gray-300'}`}
       >
-        <File size={12} className={selectedFile === node.name ? 'text-blue-400' : 'text-gray-600'} /> 
+        <File size={12} className={selectedPath === nodePath ? 'text-blue-400' : 'text-gray-600'} /> 
         {node.name}
       </button>
     );
   }
 
-  // 디렉토리 노드 렌더링 (자식이 있으면 재귀 호출)
   return (
     <div className="space-y-1.5">
       <button
@@ -55,7 +138,6 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, depth, selectedFile, onSelect
         <span className="truncate">{node.name}</span>
       </button>
 
-      {/*자식이 있고 펼침 상태면 재귀적으로 자식 노드들을 렌더링 */}
       {isOpen && node.children && node.children.length > 0 && (
         <div className="pl-4 space-y-1.5 border-l border-l-white/5 ml-1.5">
           {node.children.map((childNode, idx) => (
@@ -63,7 +145,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, depth, selectedFile, onSelect
               key={`${childNode.name}-${idx}`}
               node={childNode}
               depth={depth + 1}
-              selectedFile={selectedFile}
+              selectedPath={selectedPath}
               onSelectFile={onSelectFile}
             />
           ))}
@@ -75,30 +157,27 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, depth, selectedFile, onSelect
 
 const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectUuid }) => {
   const [activeTab, setActiveTab] = useState<'code' | 'info'>('code');
-  const [selectedFile, setSelectedFile] = useState('MainLogic.java');
+  
+  const [selectedPath, setSelectedPath] = useState<string>('');
+  
   const [modifyPrompt, setModifyPrompt] = useState('');
   const [isModifying, setIsModifying] = useState(false);
 
   const [serverFiles, setServerFiles] = useState<ProjectNode[]>([]);
   const [isTreeLoading, setIsTreeLoading] = useState<boolean>(false);
   
+  const [fileContent, setFileContent] = useState<string>('// 좌측에서 파일을 선택해 주세요.');
+  const [isFileLoading, setIsFileLoading] = useState<boolean>(false);
+  const [fileError, setFileError] = useState<string>('');
+  
+  const fileContentCacheRef = useRef<{ [path: string]: string }>({});
+  
   const fetchedUuidRef = useRef<string | null>(null);
-
-  const fileContent: { [key: string]: string } = {
-    'App.tsx': `import React from 'react';\n\nexport const App = () => {\n  return <div>Pet Health Monitor</div>;\n};`,
-    'MainLogic.java': `public class PetHealthMonitor {\n  private int dogAge = 12;\n  public void checkVitals() {\n    System.out.println("Monitoring...");\n  }\n}`,
-    'styles.css': `body {\n  background-color: #0d0d0e;\n  color: white;\n}`,
-    'database.sql': `CREATE TABLE health_logs (\n  id SERIAL PRIMARY KEY,\n  pet_id INT,\n  status TEXT\n);`,
-    'env.json': `{\n  "API_KEY": "AER-9928-AX",\n  "DEBUG": true\n}`,
-    'package.json': `{\n  "name": "senior-pet-care",\n  "version": "1.0.4"\n}`
-  };
 
   const parseFlatToTree = (flatList: any[]) => {
     const root: ProjectNode[] = [];
     const lookup: { [key: string]: ProjectNode } = {};
 
-    // 🟢 [정렬 추가] 부모가 자식보다 먼저 처리되도록 path 길이 오름차순 정렬
-    //    이렇게 해야 깊은 경로(src/main/java/com)가 와도 lookup에서 부모를 항상 찾을 수 있음
     const sortedList = [...flatList].sort((a, b) => {
       const aDepth = a.path.split('/').length;
       const bDepth = b.path.split('/').length;
@@ -125,7 +204,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectUuid }) => {
         if (lookup[parentPath]) {
           lookup[parentPath].children?.push(newNode);
         } else {
-          // 부모를 못 찾으면 root로 (안전망)
           root.push(newNode);
         }
       }
@@ -159,21 +237,20 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectUuid }) => {
           const parsedTree = parseFlatToTree(data);
           setServerFiles(parsedTree);
           
-          //[재귀적으로 첫 번째 파일 찾기] 깊은 트리에서도 첫 파일을 찾아 선택
-          const findFirstFile = (nodes: ProjectNode[]): string | null => {
+          const findFirstFilePath = (nodes: ProjectNode[]): string | null => {
             for (const n of nodes) {
-              if (n.type === 'FILE') return n.name;
+              if (n.type === 'FILE') return (n as any).path || n.name;
               if (n.children && n.children.length > 0) {
-                const found = findFirstFile(n.children);
+                const found = findFirstFilePath(n.children);
                 if (found) return found;
               }
             }
             return null;
           };
           
-          const firstFileName = findFirstFile(parsedTree);
-          if (firstFileName) {
-            setSelectedFile(firstFileName);
+          const firstFilePath = findFirstFilePath(parsedTree);
+          if (firstFilePath) {
+            setSelectedPath(firstFilePath);
           }
         } else {
           setServerFiles([]);
@@ -190,6 +267,51 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectUuid }) => {
     fetchProjectTree();
   }, [projectUuid]);
 
+  useEffect(() => {
+    const fetchFileContent = async () => {
+      if (!projectUuid || !selectedPath) {
+        return;
+      }
+      
+      if (fileContentCacheRef.current[selectedPath] !== undefined) {
+        console.log(`[캐시 히트] ${selectedPath} - 메모리에서 즉시 로드`);
+        setFileContent(fileContentCacheRef.current[selectedPath]);
+        setFileError('');
+        return;
+      }
+      
+      setIsFileLoading(true);
+      setFileError('');
+      
+      try {
+        console.log(`[파일 조회] ${selectedPath}`);
+        const content = await storageService.getFileContent(projectUuid, selectedPath);
+        
+        fileContentCacheRef.current[selectedPath] = content;
+        setFileContent(content);
+        
+      } catch (error: any) {
+        console.error(`파일 내용 로드 실패: ${selectedPath}`, error);
+        setFileError(
+          error.response?.status === 404 
+            ? '파일을 찾을 수 없습니다.'
+            : error.response?.status === 403
+            ? '이 파일에 접근할 권한이 없습니다.'
+            : '파일 내용을 불러오는 중 오류가 발생했습니다.'
+        );
+        setFileContent('');
+      } finally {
+        setIsFileLoading(false);
+      }
+    };
+
+    fetchFileContent();
+  }, [projectUuid, selectedPath]);
+
+  useEffect(() => {
+    fileContentCacheRef.current = {};
+  }, [projectUuid]);
+
   const handleModifyRequest = () => {
     if (!modifyPrompt.trim()) return;
     setIsModifying(true);
@@ -198,6 +320,11 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectUuid }) => {
       setModifyPrompt('');
     }, 2000);
   };
+
+  const displayFileName = selectedPath ? selectedPath.split('/').pop() : '';
+  
+  //[현재 파일의 언어 식별자] 하이라이팅 적용을 위한 언어 결정
+  const currentLanguage = getLanguageFromPath(selectedPath);
 
   return (
     <div className="flex flex-col h-full bg-[#0D0D0E] text-white overflow-hidden animate-in fade-in duration-700">
@@ -250,15 +377,14 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectUuid }) => {
                   <RefreshCw size={12} className="animate-spin text-blue-500" /> 트리 구조 동기화 중...
                 </div>
               ) : (
-                /*[재귀 트리 렌더링] 깊이에 상관없이 모든 자식을 펼침 */
                 <div className="space-y-3">
                   {serverFiles.map((item, idx) => (
                     <TreeNode 
                       key={`${item.name}-${idx}`}
                       node={item}
                       depth={0}
-                      selectedFile={selectedFile}
-                      onSelectFile={setSelectedFile}
+                      selectedPath={selectedPath}
+                      onSelectFile={setSelectedPath}
                     />
                   ))}
                 </div>
@@ -270,7 +396,18 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectUuid }) => {
               <div className="flex items-center justify-between px-8 py-3 bg-white/[0.03] border-b border-white/5">
                 <div className="flex items-center gap-2">
                   <FileCode size={14} className="text-blue-500" />
-                  <span className="text-[11px] font-mono font-bold text-gray-400 tracking-tight">{selectedFile}</span>
+                  <span className="text-[11px] font-mono font-bold text-gray-400 tracking-tight">
+                    {displayFileName || 'No file selected'}
+                  </span>
+                  {/* [언어 뱃지] 현재 파일의 언어를 우측에 살짝 표시 */}
+                  {selectedPath && currentLanguage !== 'text' && (
+                    <span className="text-[9px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 font-bold uppercase tracking-widest ml-2">
+                      {currentLanguage}
+                    </span>
+                  )}
+                  {isFileLoading && (
+                    <RefreshCw size={11} className="animate-spin text-blue-400 ml-1" />
+                  )}
                 </div>
                 <div className="flex gap-1.5">
                   <div className="w-2.5 h-2.5 rounded-full bg-red-500/20 border border-red-500/30" />
@@ -279,10 +416,56 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectUuid }) => {
                 </div>
               </div>
               
-              <div className="flex-1 p-10 font-mono text-sm overflow-y-auto custom-scrollbar bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]">
-                <pre className="text-gray-300 pl-4 whitespace-pre-wrap leading-relaxed">
-                  {fileContent[selectedFile] || "// Empty File"}
-                </pre>
+              <div className="flex-1 overflow-y-auto custom-scrollbar bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]">
+                {/*[에러 / 로딩 / 정상 표시] 3가지 상태에 따라 분기 렌더링 */}
+                {fileError ? (
+                  <div className="p-10">
+                    <div className="flex items-center gap-3 text-red-400 bg-red-500/5 border border-red-500/20 rounded-2xl p-6">
+                      <AlertCircle size={18} className="shrink-0" />
+                      <div>
+                        <p className="font-bold text-sm mb-1">파일을 불러올 수 없습니다</p>
+                        <p className="text-xs text-red-400/70">{fileError}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : isFileLoading ? (
+                  <div className="p-10 flex items-center gap-3 text-gray-500">
+                    <RefreshCw size={14} className="animate-spin text-blue-500" />
+                    <span className="text-xs">파일 내용을 가져오는 중...</span>
+                  </div>
+                ) : (
+                  /*[구문 강조 적용] react-syntax-highlighter로 컬러 코딩 */
+                  <SyntaxHighlighter
+                    language={currentLanguage}
+                    style={vscDarkPlus}
+                    showLineNumbers={true}
+                    wrapLongLines={false}
+                    customStyle={{
+                      background: 'transparent',
+                      margin: 0,
+                      padding: '2.5rem',
+                      fontSize: '0.9rem',          // 글자 살짝 더 크게
+                      lineHeight: '1.7',           // 줄 간격 넉넉하게
+                      fontFamily: 'inherit',
+                      textShadow: 'none',          // 텍스트 그림자 제거로 또렷함
+                    }}
+                    lineNumberStyle={{
+                      color: '#52525b',            // 줄번호 조금 더 밝게
+                      minWidth: '3em',             // 줄번호 영역 살짝 넓게
+                      paddingRight: '1.5em',
+                      userSelect: 'none',
+                      borderRight: '1px solid rgba(255,255,255,0.05)',  // 줄번호 우측 구분선
+                      marginRight: '1em',
+                    }}
+                    codeTagProps={{
+                      style: {
+                        fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+                      }
+                    }}
+                  >
+                    {fileContent || "// Empty File"}
+                  </SyntaxHighlighter>
+                )}
               </div>
 
               {/* 하단 AI 수정 프롬프트 바 */}

@@ -74,5 +74,49 @@ export const storageService = {
 
       throw error;
     }
+  },
+
+  // 2. 특정 파일 내용 실시간 조회(GET)
+  //URL 규격: GET /api/storage/projects/{uuid}/file-content?path=src/Main.java
+  getFileContent: async (projectUuid: string, path: string): Promise<string> => {
+    const requestPath = `/api/storage/projects/${projectUuid}/file-content`;
+
+    // 디버그 로그
+    console.group("[storageService.getFileContent] 요청 정보");
+    console.log("요청 경로:", requestPath);
+    console.log("파일 경로 파라미터:", path);
+    console.groupEnd();
+
+    try {
+      const response = await API.get(requestPath, {
+        params: { path: path },
+        responseType: 'text' // 백엔드가 JSON이 아닌 생 텍스트(String)를 주므로 text 타입으로 가로챔
+      });
+
+      //성공 로그
+      console.group("[storageService.getFileContent] 응답 성공");
+      console.log("Status:", response.status);
+      console.log("응답 데이터 길이:", typeof response.data === 'string' ? response.data.length : "N/A");
+      console.log("응답 데이터 미리보기:", typeof response.data === 'string' ? response.data.substring(0, 200) : response.data);
+      console.groupEnd();
+
+      return response.data;
+
+    } catch (error: any) {
+      //에러 로그
+      console.group(`[storageService.getFileContent] 요청 실패 (Path: ${path})`);
+      console.error("에러 메시지:", error.message);
+
+      if (error.response) {
+        console.error("응답 Status:", error.response.status);
+        console.error("응답 Body:", error.response.data);
+      }
+      console.groupEnd();
+
+      throw error;
+    }
   }
+
+
+
 };

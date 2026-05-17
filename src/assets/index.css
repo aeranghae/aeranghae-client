@@ -58,9 +58,14 @@
   to { transform: rotate(360deg); }
 }
 
-/* 텍스트 영역 등의 커스텀 스크롤바 스타일 (코드 내 인라인 클래스와 연동) */
+/* ========================================
+   커스텀 스크롤바 - 가로/세로 모두 어두운 톤으로 통일
+======================================== */
+
+/* Chrome / Safari / Edge (Webkit 계열) */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
+  height: 6px; /* 가로 스크롤바 두께 추가 */
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
@@ -71,6 +76,42 @@
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+/* 가로/세로 스크롤바가 만나는 모서리 투명 처리 */
+.custom-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox 대응 */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+/* ========================================
+   하이라이터(SyntaxHighlighter) 내부 스크롤바 처리
+   react-syntax-highlighter가 만드는 <pre class="language-*"> 태그에 적용
+======================================== */
+pre[class*="language-"]::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+pre[class*="language-"]::-webkit-scrollbar-track {
+  background: transparent;
+}
+pre[class*="language-"]::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+pre[class*="language-"]::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+pre[class*="language-"]::-webkit-scrollbar-corner {
+  background: transparent;
+}
+pre[class*="language-"] {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
 /* --- Login Page Styles --- */
